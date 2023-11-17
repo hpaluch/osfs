@@ -31,6 +31,13 @@ FLUSH PRIVILEGES;
 EOF
 }
 
+extract_db_pwd ()
+{
+	user=$1
+	db_pwd_file=$CFG_SEC_DIR/mysql_${user}_pwd.txt
+	cat $db_pwd_file | tr -d '\r\n'
+}
+
 for i in $CFG_BASE $CFG_STAGE_DIR $CFG_SEC_DIR
 do
 	[ -d "$i" ] || mkdir -vp "$i"
@@ -40,7 +47,7 @@ set -x
 
 STAGE=$CFG_STAGE_DIR/001basepkg
 [ -f $STAGE ] || {
-	sudo apt-get install -y software-properties-common eatmydata curl wget jq netcat-openbsd openssl
+	sudo apt-get install -y software-properties-common eatmydata curl wget jq netcat-openbsd openssl crudini
 	touch $STAGE
 }
 
@@ -127,4 +134,90 @@ STAGE=$CFG_STAGE_DIR/021keystone-pkg
 	touch $STAGE
 }
 
+STAGE=$CFG_STAGE_DIR/022keystone-cfg
+[ -f $STAGE ] || {
+	f=/etc/keystone/keystone.conf
+	sudo crudini --set $f cache backend dogpile.cache.memcached
+	sudo crudini --set $f cache enabled true
+	sudo crudini --set $f cache memcache_servers $HOST:11211
+	p=`extract_db_pwd keystone`
+	sudo crudini --set $f database connection "mysql+pymysql://keystone:$p@$HOST/keystone"
+	sudo crudini --set $f credential provider fernet
+	sudo crudini --set $f credential caching true
+	#sudo diff /etc/keystone/keystone.conf{.orig,}
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/023keystone-init
+[ -f $STAGE ] || {
+	sudo -u keystone keystone-manage db_sync
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/024keystone-init-fernet
+[ -f $STAGE ] || {
+	sudo keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/025keystone-init-cred
+[ -f $STAGE ] || {
+	sudo keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/026keystone-svc-pwd
+[ -f $STAGE ] || {
+	svc=keystone
+	openssl rand -hex 10 > $CFG_SEC_DIR/svc_${svc}_pwd.txt
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/027keystone-boostrap
+[ -f $STAGE ] || {
+	svc=keystone
+	p=`cat $CFG_SEC_DIR/svc_${svc}_pwd.txt`
+	sudo keystone-manage bootstrap --bootstrap-password "$p" \
+	  --bootstrap-admin-url http://$HOST:5000/v3/ \
+	  --bootstrap-internal-url http://$HOST:5000/v3/ \
+	  --bootstrap-public-url http://$HOST:5000/v3/ \
+	  --bootstrap-region-id RegionOne
+	sudo systemctl restart apache2
+	sleep 3
+	touch $STAGE
+}
+
+# Do not use -4 - apache listens on IPv6 and IPv4 but LISTEN is shown for IPv6 only...
+ss -ltn | fgrep ':5000' || {
+	echo "ERROR: keystone not listening on port 5000" >&2
+	exit 1
+}
+
+STAGE=$CFG_STAGE_DIR/028keystone-adminrc
+[ -f $STAGE ] || {
+	p=`cat $CFG_SEC_DIR/svc_keystone_pwd.txt`
+cat > $CFG_BASE/keystonerc_admin <<EOF
+export OS_USERNAME=admin
+export OS_PASSWORD=$p
+export OS_PROJECT_NAME=admin
+export OS_USER_DOMAIN_NAME=Default
+export OS_PROJECT_DOMAIN_NAME=Default
+# replace with you static IP address
+export OS_AUTH_URL=http://$HOST:5000/v3
+export OS_IDENTITY_API_VERSION=3
+export PS1='\u@\h:\w(keystonerc_admin)\$ '
+EOF
+	touch $STAGE
+}
+
+# verify that keystone is responding
+# but use new shell () to declutter environment
+(
+	source $CFG_BASE/keystonerc_admin
+	openstack service list || {
+		echo "ERROR: Keystone not responding" >&2
+		exit 1
+	}
+)
+	
 exit 0
