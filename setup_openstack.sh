@@ -220,4 +220,13 @@ EOF
 	}
 )
 	
+STAGE=$CFG_STAGE_DIR/029keystone-service-proj
+[ -f $STAGE ] || {
+	# always use new shell to keep environment clean...
+	( source $CFG_BASE/keystonerc_admin
+	openstack project create --domain default --description "Service Project" service )
+	touch $STAGE
+}
+
+
 exit 0
