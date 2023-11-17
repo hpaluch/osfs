@@ -38,6 +38,38 @@ extract_db_pwd ()
 	cat $db_pwd_file | tr -d '\r\n'
 }
 
+extract_svc_pwd ()
+{
+	svc=$1
+	pwd_file=$CFG_SEC_DIR/svc_${svc}_pwd.txt
+	cat $pwd_file | tr -d '\r\n'
+}
+
+register_service_in_keystone ()
+{
+	svc=$1
+	port=$2
+	descr=$3
+	svc2=$4
+	( source $CFG_BASE/keystonerc_admin
+	echo "SVC: $svc PORT: $port DESCR: $descr SVC2: $svc2"
+	# test that openstack client really works
+	openstack service list
+	# create password for $svc
+	[ -f $CFG_SEC_DIR/svc_${svc}_pwd.txt ] || {
+	       	openssl rand -hex 10 > $CFG_SEC_DIR/svc_${svc}_pwd.txt
+	}
+	p=`cat $CFG_SEC_DIR/svc_${svc}_pwd.txt`
+	openstack user create --domain default --password $p $svc
+	openstack role add --project service --user $svc admin
+	openstack service create --name $svc --description "OpenStack $descr" $svc2
+	for ep in public internal admin
+	do
+		openstack endpoint create --region RegionOne $svc2 $ep http://$HOST:$port
+	done
+	)
+}
+
 for i in $CFG_BASE $CFG_STAGE_DIR $CFG_SEC_DIR
 do
 	[ -d "$i" ] || mkdir -vp "$i"
@@ -228,5 +260,77 @@ STAGE=$CFG_STAGE_DIR/029keystone-service-proj
 	touch $STAGE
 }
 
+# Now setup Glance (image service)
+STAGE=$CFG_STAGE_DIR/030glance-db
+[ -f $STAGE ] || {
+	setup_mysql_db glance glance
+	touch $STAGE
+}
 
+STAGE=$CFG_STAGE_DIR/031glance-svc
+[ -f $STAGE ] || {
+	register_service_in_keystone glance 9292 Image image
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/032glance-pkg
+[ -f $STAGE ] || {
+	sudo eatmydata apt-get install glance
+	touch $STAGE
+}
+
+
+STAGE=$CFG_STAGE_DIR/033glance-cfg
+[ -f $STAGE ] || {
+	svc=glance
+	f=/etc/glance/glance-api.conf
+	p=`extract_db_pwd glance`
+	sudo crudini --set $f database connection "mysql+pymysql://glance:$p@$HOST/glance"
+	sudo crudini --set $f glance_store stores "file,http"
+	sudo crudini --set $f glance_store default_store file
+	sudo crudini --set $f glance_store filesystem_store_datadir /var/lib/glance/images
+	sudo crudini --set $f keystone_authtoken www_authenticate_uri "http://$HOST:5000"
+	sudo crudini --set $f keystone_authtoken auth_url "http://$HOST:5000"
+	sudo crudini --set $f keystone_authtoken memcached_servers  "$HOST:11211"
+	sudo crudini --set $f keystone_authtoken auth_type password
+	sudo crudini --set $f keystone_authtoken project_domain_name Default
+	sudo crudini --set $f keystone_authtoken user_domain_name  Default
+	sudo crudini --set $f keystone_authtoken project_name service
+	sudo crudini --set $f keystone_authtoken username "$svc"
+	sudo crudini --set $f keystone_authtoken password `extract_svc_pwd $svc`
+	sudo crudini --set $f paste_deploy flavor keystone
+	#sudo diff $f{.orig,}
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/034glance-dbsync
+[ -f $STAGE ] || {
+	sudo -u glance glance-manage db_sync
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/035glance-mkdir
+[ -f $STAGE ] || {
+	sudo mkdir -p /var/lib/glance/images/
+	sudo chown glance:glance /var/lib/glance/images/
+	sudo systemctl restart glance-api
+	sudo systemctl restart apache2
+	sleep 5
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/036glance-image
+[ -f $STAGE ] || {
+	f=cirros-0.5.1-x86_64-disk.img
+	url=http://download.cirros-cloud.net/0.5.1/$f
+	path=$HOME/$f
+	#curl -fL -o $path $url
+	( source $CFG_BASE/keystonerc_admin
+	openstack image list
+	openstack image create --public --container-format bare --disk-format qcow2 --file $path cirros
+	openstack image list
+	)
+	touch $STAGE
+}
+	
 exit 0
