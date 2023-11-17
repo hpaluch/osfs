@@ -118,7 +118,7 @@ EOF
 
 STAGE=$CFG_STAGE_DIR/005secure-mysql
 [ -f $STAGE ] || {
-	echo "Anser no to socket and note MySQL root password you set"
+	echo "Answer no to socket and note MySQL root password you set"
 	sudo mysql_secure_installation
 	echo "Now store MySQL root password to $MYSQL_ROOT_PWD_FILE"
 	touch $STAGE
@@ -324,7 +324,7 @@ STAGE=$CFG_STAGE_DIR/036glance-image
 	f=cirros-0.5.1-x86_64-disk.img
 	url=http://download.cirros-cloud.net/0.5.1/$f
 	path=$HOME/$f
-	#curl -fL -o $path $url
+	curl -fL -o $path $url
 	( source $CFG_BASE/keystonerc_admin
 	openstack image list
 	openstack image create --public --container-format bare --disk-format qcow2 --file $path cirros
