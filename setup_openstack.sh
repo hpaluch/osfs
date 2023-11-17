@@ -15,6 +15,22 @@ CFG_STAGE_DIR=$CFG_BASE/stages
 CFG_SEC_DIR=$CFG_BASE/secrets
 MYSQL_ROOT_PWD_FILE=$CFG_SEC_DIR/mysql_root_pwd.txt
 
+setup_mysql_db ()
+{
+	# arguments: DB_NAME USER_NAME
+	db=$1
+	user=$2
+	db_pwd_file=$CFG_SEC_DIR/mysql_${user}_pwd.txt
+	[ -r $db_pwd_file ] || openssl rand -hex 10 > $db_pwd_file
+	db_pwd=`cat $db_pwd_file | tr -d '\r\n'`
+mysql -u root -p`cat $MYSQL_ROOT_PWD_FILE`  <<EOF
+CREATE DATABASE $db;
+GRANT ALL PRIVILEGES ON $db.* TO '$user'@'localhost' IDENTIFIED BY '$db_pwd';
+GRANT ALL PRIVILEGES ON $db.* TO '$user'@'%' IDENTIFIED BY '$db_pwd';
+FLUSH PRIVILEGES;
+EOF
+}
+
 for i in $CFG_BASE $CFG_STAGE_DIR $CFG_SEC_DIR
 do
 	[ -d "$i" ] || mkdir -vp "$i"
@@ -30,13 +46,14 @@ STAGE=$CFG_STAGE_DIR/001basepkg
 
 STAGE=$CFG_STAGE_DIR/002enable-os-repo
 [ -f $STAGE ] || {
-	sudo add-apt-repository cloud-archive:$RELEASE
+	sudo eatmydata add-apt-repository cloud-archive:$RELEASE
+	sudo eatmydata apt-get install -y python3-openstackclient
 	touch $STAGE
 }
 
 STAGE=$CFG_STAGE_DIR/003install-mysql
 [ -f $STAGE ] || {
-	sudo apt-get install -y mariadb-server python3-pymysql 
+	sudo eatmydata apt-get install -y mariadb-server python3-pymysql
 	touch $STAGE
 }
 
@@ -82,7 +99,7 @@ mysql -u root -p`cat $MYSQL_ROOT_PWD_FILE` -e 'show databases' || {
 
 STAGE=$CFG_STAGE_DIR/010install-memcached
 [ -f $STAGE ] || {
-	sudo apt-get install -y memcached
+	sudo eatmydata apt-get install -y memcached
 	touch $STAGE
 }
 
@@ -96,6 +113,18 @@ STAGE=$CFG_STAGE_DIR/011config-memcached
 ss -lt4 | fgrep $HOST_IP\:11211 || {
 	echo "ERROR: Memacached does not listen on port 11211" >&2
 	exit 1
+}
+
+STAGE=$CFG_STAGE_DIR/020keystone-db
+[ -f $STAGE ] || {
+	setup_mysql_db keystone keystone
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/021keystone-pkg
+[ -f $STAGE ] || {
+	sudo eatmydata apt-get install -y keystone
+	touch $STAGE
 }
 
 exit 0
