@@ -24,7 +24,7 @@ set -x
 
 STAGE=$CFG_STAGE_DIR/001basepkg
 [ -f $STAGE ] || {
-	sudo apt-get install -y software-properties-common eatmydata curl wget jq
+	sudo apt-get install -y software-properties-common eatmydata curl wget jq netcat-openbsd openssl
 	touch $STAGE
 }
 
@@ -80,5 +80,22 @@ mysql -u root -p`cat $MYSQL_ROOT_PWD_FILE` -e 'show databases' || {
 	exit 1
 }
 
+STAGE=$CFG_STAGE_DIR/010install-memcached
+[ -f $STAGE ] || {
+	sudo apt-get install -y memcached
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/011config-memcached
+[ -f $STAGE ] || {
+	sudo sed -i.bak -e 's/^-l.*/-l '"$HOST_IP"'/' /etc/memcached.conf
+        sudo systemctl restart memcached
+	touch $STAGE
+}
+
+ss -lt4 | fgrep $HOST_IP\:11211 || {
+	echo "ERROR: Memacached does not listen on port 11211" >&2
+	exit 1
+}
 
 exit 0
