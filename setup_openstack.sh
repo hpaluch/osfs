@@ -453,7 +453,7 @@ STAGE=$CFG_STAGE_DIR/062nova-db
 
 STAGE=$CFG_STAGE_DIR/063nova-svc
 [ -f $STAGE ] || {
-	register_service_in_keystone nova  8774/v2.1 "OpenStack Compute" nova
+	register_service_in_keystone nova  8774/v2.1 "OpenStack Compute" compute
 	touch $STAGE
 }
 
@@ -606,14 +606,47 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 }
 
 STAGE=$CFG_STAGE_DIR/069-create-network
+#[ -f $STAGE ] || {
+#	( source $CFG_BASE/keystonerc_admin
+#	  openstack network create  --share --external \
+#	  --provider-physical-network provider \
+#	  --provider-network-type flat provider
+#	)
+#	touch $STAGE
+#	exit 0
+#}
+
+# Setting Nova Compute
+# https://docs.openstack.org/nova/2023.2/install/compute-install-ubuntu.html
+
+STAGE=$CFG_STAGE_DIR/070nova-compute-pkg
 [ -f $STAGE ] || {
+	sudo eatmydata apt-get install -y nova-compute
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/071nova-compute-cfg
+[ -f $STAGE ] || {
+	svc=nova
+	f=/etc/nova/nova.conf
+	sudo crudini --set $f vnc novncproxy_base_url  "http://$HOST:6080/vnc_auto.html"
+
+	sudo systemctl restart nova-compute
+	sleep 10
+
 	( source $CFG_BASE/keystonerc_admin
-	  openstack network create  --share --external \
-	  --provider-physical-network provider \
-	  --provider-network-type flat provider
+	# TOOD: verify that our 1 node is there
+	openstack compute service list --service nova-compute
+	sudo -u nova nova-manage cell_v2 discover_hosts --verbose
 	)
 	touch $STAGE
-	exit 0
 }
+
+STAGE=$CFG_STAGE_DIR/072neutron-dbsync
+[ -f $STAGE ] || {
+	sudo -u neutron neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
+	touch $STAGE
+}
+	
 
 exit 0
