@@ -38,6 +38,14 @@ extract_db_pwd ()
 	cat $db_pwd_file | tr -d '\r\n'
 }
 
+create_svc_pwd ()
+{
+	local svc=$1
+	[ -f $CFG_SEC_DIR/svc_${svc}_pwd.txt ] || {
+		openssl rand -hex 10 > $CFG_SEC_DIR/svc_${svc}_pwd.txt
+	}
+}
+
 extract_svc_pwd ()
 {
 	local svc=$1
@@ -383,6 +391,41 @@ STAGE=$CFG_STAGE_DIR/044placement-dbsync
 	# verify that Placement works
 	( source $CFG_BASE/keystonerc_admin
 	  openstack resource class list )
+	touch $STAGE
+}
+
+# Setup RabbitMQ
+STAGE=$CFG_STAGE_DIR/050rabbit-pkg
+[ -f $STAGE ] || {
+	# NOTE: eatmydata somehow clashes with erlang setup
+	sudo apt-get install -y rabbitmq-server
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/051rabbit-pwd
+[ -f $STAGE ] || {
+	create_svc_pwd rabbit
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/052rabbit-listen
+[ -f $STAGE ] || {
+	echo "NODE_IP_ADDRESS=$HOST_IP" | sudo tee -a /etc/rabbitmq/rabbitmq-env.conf
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/053rabbit-restart
+[ -f $STAGE ] || {
+	sudo systemctl restart rabbitmq-server.service
+	sleep 3
+	ss -ltn | fgrep ':5672'
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/054rabbit-account
+[ -f $STAGE ] || {
+	sudo rabbitmqctl add_user openstack $(extract_svc_pwd rabbit)
+	sudo rabbitmqctl set_permissions openstack ".*" ".*" ".*"
 	touch $STAGE
 }
 
