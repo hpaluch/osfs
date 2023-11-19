@@ -429,5 +429,45 @@ STAGE=$CFG_STAGE_DIR/054rabbit-account
 	touch $STAGE
 }
 
-	
+# Partial Setup for Neutron and Nova (there is circular dependency so we have
+# to setup them in smal increments)...
+STAGE=$CFG_STAGE_DIR/060neutron-db
+[ -f $STAGE ] || {
+	setup_mysql_db neutron neutron
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/061neutron-svc
+[ -f $STAGE ] || {
+	register_service_in_keystone neutron 9696 "OpenStack Networking" neutron
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/062nova-db
+[ -f $STAGE ] || {
+	setup_mysql_db nova nova
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/063nova-svc
+[ -f $STAGE ] || {
+	register_service_in_keystone nova  8774/v2.1 "OpenStack Compute" nova
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/064neutron-pkg
+[ -f $STAGE ] || {
+	sudo eatmydata apt-get install -y neutron-server neutron-plugin-ml2 neutron-linuxbridge-agent \
+       		python3-neutronclient neutron-macvtap-agent
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/065nova-pkg
+[ -f $STAGE ] || {
+	sudo eatmydata apt-get install -y nova-api nova-conductor nova-novncproxy nova-scheduler
+	touch $STAGE
+}
+
+
+
 exit 0
