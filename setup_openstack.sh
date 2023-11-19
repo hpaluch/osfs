@@ -446,6 +446,8 @@ STAGE=$CFG_STAGE_DIR/061neutron-svc
 STAGE=$CFG_STAGE_DIR/062nova-db
 [ -f $STAGE ] || {
 	setup_mysql_db nova nova
+	setup_mysql_db nova_api nova
+	setup_mysql_db nova_cell0 nova
 	touch $STAGE
 }
 
@@ -467,6 +469,87 @@ STAGE=$CFG_STAGE_DIR/065nova-pkg
 	sudo eatmydata apt-get install -y nova-api nova-conductor nova-novncproxy nova-scheduler
 	touch $STAGE
 }
+
+STAGE=$CFG_STAGE_DIR/066-nova-cfg
+[ -f $STAGE ] || {
+	svc=nova
+	f=/etc/nova/nova.conf
+	p=`extract_db_pwd $svc`
+        rp=$(extract_svc_pwd rabbit)
+        np=$(extract_svc_pwd nova)
+
+	# configuration based on: https://docs.openstack.org/nova/latest/install/controller-install-ubuntu.html
+	sudo crudini --set $f api_database connection "mysql+pymysql://$svc:$p@$HOST/nova_api"
+	sudo crudini --set $f database connection "mysql+pymysql://$svc:$p@$HOST/nova"
+	sudo crudini --set $f DEFAULT transport_url "rabbit://openstack:$rp@$HOST:5672/"
+	sudo crudini --set $f DEFAULT my_ip "$HOST_IP"
+	sudo crudini --set $f api auth_strategy keystone
+
+	sudo crudini --set $f keystone_authtoken auth_url "http://$HOST:5000/"
+	sudo crudini --set $f keystone_authtoken memcached_servers  "$HOST:11211"
+	sudo crudini --set $f keystone_authtoken auth_type password
+	sudo crudini --set $f keystone_authtoken project_domain_name Default
+	sudo crudini --set $f keystone_authtoken user_domain_name  Default
+	sudo crudini --set $f keystone_authtoken project_name service
+	sudo crudini --set $f keystone_authtoken username "$svc"
+	sudo crudini --set $f keystone_authtoken password `extract_svc_pwd $svc`
+
+	sudo crudini --set $f service_user send_service_user_token true
+	sudo crudini --set $f service_user auth_url  "http://$HOST/identity"
+	sudo crudini --set $f service_user auth_strategy keystone
+	sudo crudini --set $f service_user auth_type password
+	sudo crudini --set $f service_user project_domain_name Default
+	sudo crudini --set $f service_user project_name service
+	sudo crudini --set $f service_user user_domain_name Default
+	sudo crudini --set $f service_user username "$svc"
+	sudo crudini --set $f service_user password "$np"
+
+	sudo crudini --set $f vnc enabled true
+	sudo crudini --set $f vnc server_listen "$HOST_IP"
+	sudo crudini --set $f server_proxyclient_address  "$HOST_IP"
+
+	sudo crudini --set $f glance api_servers  "http://$HOST:9292"
+	sudo crudini --set $f oslo_concurrency lock_path  /var/lib/nova/tmp
+
+	sudo crudini --set $f placement region_name RegionOne
+	sudo crudini --set $f placement project_domain_name Default
+	sudo crudini --set $f placement project_name service
+	sudo crudini --set $f placement auth_type password
+	sudo crudini --set $f placement user_domain_name Default
+	sudo crudini --set $f placement auth_url "http://$HOST:5000/v3"
+	sudo crudini --set $f placement username placement
+	sudo crudini --set $f placement password $(extract_svc_pwd placement)
+
+	# from: https://docs.openstack.org/neutron/latest/install/controller-install-ubuntu.html#configure-the-compute-service-to-use-the-networking-service
+	sudo crudini --set $f neutron auth_url  "http://$HOST:5000"
+	sudo crudini --set $f neutron auth_type password
+	sudo crudini --set $f neutron project_domain_name Default
+	sudo crudini --set $f neutron user_domain_name Default
+	sudo crudini --set $f neutron region_name RegionOne
+	sudo crudini --set $f neutron project_name service
+	sudo crudini --set $f neutron username neutron
+	sudo crudini --set $f neutron password $(extract_svc_pwd neutron)
+	# We don't use metadata service (OpenStack is complex enough even without metadata)
+	sudo crudini --set $f neutron service_metadata_proxy false
+	sudo crudini --set $f neutron metadata_proxy_shared_secret METADATA_SECRET
+
+	#sudo diff $f{.orig,}
+	touch $STAGE
+}
+STAGE=$CFG_STAGE_DIR/067-nova-syncd
+[ -f $STAGE ] || {
+	sudo -u nova nova-manage api_db sync
+	sudo -u nova nova-manage cell_v2 map_cell0
+	sudo -u nova nova-manage cell_v2 create_cell --name=cell1 --verbose
+	sudo -u nova nova-manage db sync
+        sudo -u nova nova-manage cell_v2 list_cells
+	for s in nova-api nova-scheduler nova-conductor nova-novncproxy
+	do
+		sudo systemctl restart $s
+	done
+	touch $STAGE
+}
+
 
 
 
