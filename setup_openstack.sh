@@ -18,11 +18,11 @@ MYSQL_ROOT_PWD_FILE=$CFG_SEC_DIR/mysql_root_pwd.txt
 setup_mysql_db ()
 {
 	# arguments: DB_NAME USER_NAME
-	db=$1
-	user=$2
-	db_pwd_file=$CFG_SEC_DIR/mysql_${user}_pwd.txt
+	local db=$1
+	local user=$2
+	local db_pwd_file=$CFG_SEC_DIR/mysql_${user}_pwd.txt
 	[ -r $db_pwd_file ] || openssl rand -hex 10 > $db_pwd_file
-	db_pwd=`cat $db_pwd_file | tr -d '\r\n'`
+	local db_pwd=`cat $db_pwd_file | tr -d '\r\n'`
 mysql -u root -p`cat $MYSQL_ROOT_PWD_FILE`  <<EOF
 CREATE DATABASE $db;
 GRANT ALL PRIVILEGES ON $db.* TO '$user'@'localhost' IDENTIFIED BY '$db_pwd';
@@ -33,24 +33,24 @@ EOF
 
 extract_db_pwd ()
 {
-	user=$1
-	db_pwd_file=$CFG_SEC_DIR/mysql_${user}_pwd.txt
+	local user=$1
+	local db_pwd_file=$CFG_SEC_DIR/mysql_${user}_pwd.txt
 	cat $db_pwd_file | tr -d '\r\n'
 }
 
 extract_svc_pwd ()
 {
-	svc=$1
-	pwd_file=$CFG_SEC_DIR/svc_${svc}_pwd.txt
+	local svc=$1
+	local pwd_file=$CFG_SEC_DIR/svc_${svc}_pwd.txt
 	cat $pwd_file | tr -d '\r\n'
 }
 
 register_service_in_keystone ()
 {
-	svc=$1
-	port=$2
-	descr=$3
-	svc2=$4
+	local svc=$1
+	local port=$2
+	local descr="$3"
+	local svc2=$4
 	( source $CFG_BASE/keystonerc_admin
 	echo "SVC: $svc PORT: $port DESCR: $descr SVC2: $svc2"
 	# test that openstack client really works
@@ -62,7 +62,7 @@ register_service_in_keystone ()
 	p=`cat $CFG_SEC_DIR/svc_${svc}_pwd.txt`
 	openstack user create --domain default --password $p $svc
 	openstack role add --project service --user $svc admin
-	openstack service create --name $svc --description "OpenStack $descr" $svc2
+	openstack service create --name $svc --description "$descr" $svc2
 	for ep in public internal admin
 	do
 		openstack endpoint create --region RegionOne $svc2 $ep http://$HOST:$port
@@ -269,13 +269,13 @@ STAGE=$CFG_STAGE_DIR/030glance-db
 
 STAGE=$CFG_STAGE_DIR/031glance-svc
 [ -f $STAGE ] || {
-	register_service_in_keystone glance 9292 Image image
+	register_service_in_keystone glance 9292 "OpenStack Image" image
 	touch $STAGE
 }
 
 STAGE=$CFG_STAGE_DIR/032glance-pkg
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install glance
+	sudo eatmydata apt-get install -y glance
 	touch $STAGE
 }
 
@@ -332,5 +332,59 @@ STAGE=$CFG_STAGE_DIR/036glance-image
 	)
 	touch $STAGE
 }
+
+# Now setup Nova Placement
+STAGE=$CFG_STAGE_DIR/040placement-db
+[ -f $STAGE ] || {
+	setup_mysql_db placement placement
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/041placement-svc
+[ -f $STAGE ] || {
+	register_service_in_keystone placement 8778 "Placement API" placement
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/042placement-pkg
+[ -f $STAGE ] || {
+	sudo eatmydata apt-get install -y placement-api python3-osc-placement
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/043placement-cfg
+[ -f $STAGE ] || {
+	svc=placement
+	f=/etc/placement/placement.conf
+	p=`extract_db_pwd $svc`
+
+	sudo crudini --set $f api auth_strategy keystone
+
+	sudo crudini --set $f keystone_authtoken auth_url "http://$HOST:5000/v3"
+	sudo crudini --set $f keystone_authtoken memcached_servers  "$HOST:11211"
+	sudo crudini --set $f keystone_authtoken auth_type password
+	sudo crudini --set $f keystone_authtoken project_domain_name Default
+	sudo crudini --set $f keystone_authtoken user_domain_name  Default
+	sudo crudini --set $f keystone_authtoken project_name service
+	sudo crudini --set $f keystone_authtoken username "$svc"
+	sudo crudini --set $f keystone_authtoken password `extract_svc_pwd $svc`
+
+	sudo crudini --set $f placement_database connection "mysql+pymysql://$svc:$p@$HOST/$svc"
+
+	#sudo diff $f{.orig,}
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/044placement-dbsync
+[ -f $STAGE ] || {
+	sudo -u placement placement-manage db sync
+	sudo systemctl restart apache2
+	sleep 10
+	# verify that Placement works
+	( source $CFG_BASE/keystonerc_admin
+	  openstack resource class list )
+	touch $STAGE
+}
+
 	
 exit 0
