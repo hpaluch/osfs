@@ -550,7 +550,70 @@ STAGE=$CFG_STAGE_DIR/067-nova-syncd
 	touch $STAGE
 }
 
+# configuration from https://docs.openstack.org/neutron/latest/install/controller-install-option1-ubuntu.html
+STAGE=$CFG_STAGE_DIR/068-neutron-cfg
+[ -f $STAGE ] || {
+	svc=neutron
+	f=/etc/neutron/neutron.conf
+	p=`extract_db_pwd $svc`
+        rp=$(extract_svc_pwd rabbit)
 
+	sudo crudini --set $f database connection "mysql+pymysql://$svc:$p@$HOST/neutron"
+	sudo crudini --set $f DEFAULT core_plugin ml2
+	# service_plugins should be empty
+	sudo crudini --set $f DEFAULT service_plugins ''
+	sudo crudini --set $f DEFAULT transport_url "rabbit://openstack:$rp@$HOST:5672/"
+	sudo crudini --set $f DEFAULT auth_strategy keystone
+	sudo crudini --set $f DEFAULT notify_nova_on_port_status_changes true
+	sudo crudini --set $f DEFAULT notify_nova_on_port_data_changes true
 
+	sudo crudini --set $f keystone_authtoken www_authenticate_uri "http://$HOST:5000"
+	sudo crudini --set $f keystone_authtoken auth_url "http://$HOST:5000"
+	sudo crudini --set $f keystone_authtoken memcached_servers  "$HOST:11211"
+	sudo crudini --set $f keystone_authtoken auth_type password
+	sudo crudini --set $f keystone_authtoken project_domain_name Default
+	sudo crudini --set $f keystone_authtoken user_domain_name  Default
+	sudo crudini --set $f keystone_authtoken project_name service
+	sudo crudini --set $f keystone_authtoken username "$svc"
+	sudo crudini --set $f keystone_authtoken password `extract_svc_pwd $svc`
+
+	sudo crudini --set $f nova auth_url "http://$HOST:5000"
+	sudo crudini --set $f nova auth_type password
+	sudo crudini --set $f nova project_domain_name Default
+	sudo crudini --set $f nova user_domain_name Default
+	sudo crudini --set $f nova region_name RegionOne
+	sudo crudini --set $f nova project_name service
+	sudo crudini --set $f nova username nova
+	sudo crudini --set $f nova password `extract_svc_pwd nova`
+
+	sudo crudini --set $f oslo_concurrency lock_path /var/lib/neutron/tmp
+
+	f=/etc/neutron/plugins/ml2/ml2_conf.ini
+	sudo crudini --set $f ml2 type_drivers flat
+	sudo crudini --set $f ml2 tenant_network_types ''
+	# from: https://docs.openstack.org/neutron/latest/admin/config-macvtap.html
+	sudo crudini --set $f ml2 mechanism_drivers macvtap
+	sudo crudini --set $f ml2_type_flat flat_networks "provider,macvtap"
+
+	f=/etc/neutron/plugins/ml2/macvtap_agent.ini
+	sudo crudini --set $f macvtap physical_interface_mappings "macvtap:br-ex"
+	sudo crudini --set $f macvtap securitygroup firewall_driver noop
+
+	echo "Please restart whole system to ensure that all Configuration changes had been applied."
+	echo "And then rerun this script again..."
+	touch $STAGE
+	exit 0
+}
+
+STAGE=$CFG_STAGE_DIR/069-create-network
+[ -f $STAGE ] || {
+	( source $CFG_BASE/keystonerc_admin
+	  openstack network create  --share --external \
+	  --provider-physical-network provider \
+	  --provider-network-type flat provider
+	)
+	touch $STAGE
+	exit 0
+}
 
 exit 0
