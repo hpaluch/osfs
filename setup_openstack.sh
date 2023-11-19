@@ -439,7 +439,7 @@ STAGE=$CFG_STAGE_DIR/060neutron-db
 
 STAGE=$CFG_STAGE_DIR/061neutron-svc
 [ -f $STAGE ] || {
-	register_service_in_keystone neutron 9696 "OpenStack Networking" neutron
+	register_service_in_keystone neutron 9696 "OpenStack Networking" network
 	touch $STAGE
 }
 
