@@ -432,13 +432,17 @@ STAGE=$CFG_STAGE_DIR/043placement-cfg
 STAGE=$CFG_STAGE_DIR/044placement-dbsync
 [ -f $STAGE ] || {
 	sudo -u placement placement-manage db sync
+	# no manage.log for placement
 	sudo systemctl restart apache2
-	sleep 10
+	sleep 3
+	wait_for_tcp_port 8778 60 "Placement"
 	# verify that Placement works
 	( source $CFG_BASE/keystonerc_admin
 	  openstack resource class list )
 	touch $STAGE
 }
+
+wait_for_tcp_port 8778 3 "Placement"
 
 # Setup RabbitMQ
 STAGE=$CFG_STAGE_DIR/050rabbit-pkg
@@ -595,8 +599,11 @@ STAGE=$CFG_STAGE_DIR/067-nova-syncd
 	do
 		sudo systemctl restart $s
 	done
+	wait_for_tcp_port 8774 60 "Nova API"
 	touch $STAGE
 }
+
+wait_for_tcp_port 8774 5 "Nova API"
 
 # configuration from https://docs.openstack.org/neutron/latest/install/controller-install-option1-ubuntu.html
 STAGE=$CFG_STAGE_DIR/068-neutron-cfg
@@ -652,6 +659,8 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	touch $STAGE
 	exit 0
 }
+
+wait_for_tcp_port 9696 20 "Neutron API"
 
 STAGE=$CFG_STAGE_DIR/069-create-network
 #[ -f $STAGE ] || {
