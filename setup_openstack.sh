@@ -672,15 +672,15 @@ STAGE=$CFG_STAGE_DIR/068b-neutron-db-manage1
 wait_for_tcp_port 9696 20 "Neutron API"
 
 STAGE=$CFG_STAGE_DIR/069-create-network
-#[ -f $STAGE ] || {
-#	( source $CFG_BASE/keystonerc_admin
-#	  openstack network create  --share --external \
-#	  --provider-physical-network provider \
-#	  --provider-network-type flat provider
-#	)
-#	touch $STAGE
-#	exit 0
-#}
+[ -f $STAGE ] || {
+	( source $CFG_BASE/keystonerc_admin
+	  openstack network create  --share --external \
+	  --provider-physical-network provider \
+	  --provider-network-type flat provider
+	)
+	touch $STAGE
+	exit 0
+}
 
 # Setting Nova Compute
 # https://docs.openstack.org/nova/2023.2/install/compute-install-ubuntu.html
