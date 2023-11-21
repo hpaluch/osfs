@@ -10,6 +10,9 @@ RELEASE=antelope
 
 echo "HOST='$HOST' HOST_IP='$HOST_IP' Release='$RELEASE'"
 
+ENABLE_TRACE="set -x"
+#ENABLE_TRACE=true
+
 CFG_BASE=$HOME/.config/osfs
 CFG_STAGE_DIR=$CFG_BASE/stages
 CFG_SEC_DIR=$CFG_BASE/secrets
@@ -37,6 +40,46 @@ extract_db_pwd ()
 	local db_pwd_file=$CFG_SEC_DIR/mysql_${user}_pwd.txt
 	cat $db_pwd_file | tr -d '\r\n'
 }
+
+wait_for_tcp_port ()
+{
+	set +x
+	local port="$1"
+	local timeout=60
+	local service=''
+	[ $# -lt 2 ] || timeout="$2"
+	[ $# -lt 3 ] || service=" service $3"
+	echo -n "Waiting for TCP port $port$service to be available, timeout=$timeout: "
+	local t=0
+	while [ $t -lt $timeout ]
+	do
+		ss -ltn | grep -qE ":$port\\s" && { $ENABLE_TRACE; return; }
+		echo -n .
+		sleep 1
+		(( t = t + 1 ))
+	done
+	echo "ERROR: Reached timeout $timeout while waiting for TCP port $port" >&2
+	exit 1
+}
+
+verify_manage_log ()
+{
+	set +x
+	local f="$1"
+	local not_regex=" INFO "
+	[ $# -lt 2 ] || not_regex="$2"
+
+	[ -r "$f" ] || {
+		echo "ERROR: Unable to read logfile '$f'" >&2
+		exit 1
+	}
+	! grep -vE "$not_regex" $f || {
+		echo "ERROR: Unexpected output (other than '$not_regex' level) in '$f'" >&2
+		exit 1
+	}
+	$ENABLE_TRACE
+}
+
 
 create_svc_pwd ()
 {
@@ -154,13 +197,12 @@ STAGE=$CFG_STAGE_DIR/011config-memcached
 [ -f $STAGE ] || {
 	sudo sed -i.bak -e 's/^-l.*/-l '"$HOST_IP"'/' /etc/memcached.conf
         sudo systemctl restart memcached
+	wait_for_tcp_port 11211 60 Memcached
 	touch $STAGE
 }
 
-ss -lt4 | fgrep $HOST_IP\:11211 || {
-	echo "ERROR: Memacached does not listen on port 11211" >&2
-	exit 1
-}
+wait_for_tcp_port 11211 5 Memcached
+
 
 STAGE=$CFG_STAGE_DIR/020keystone-db
 [ -f $STAGE ] || {
@@ -188,21 +230,25 @@ STAGE=$CFG_STAGE_DIR/022keystone-cfg
 	touch $STAGE
 }
 
+keystone_manage_log=/var/log/keystone/keystone-manage.log
 STAGE=$CFG_STAGE_DIR/023keystone-init
 [ -f $STAGE ] || {
 	sudo -u keystone keystone-manage db_sync
+	verify_manage_log $keystone_manage_log
 	touch $STAGE
 }
 
 STAGE=$CFG_STAGE_DIR/024keystone-init-fernet
 [ -f $STAGE ] || {
 	sudo keystone-manage fernet_setup --keystone-user keystone --keystone-group keystone
+	verify_manage_log $keystone_manage_log
 	touch $STAGE
 }
 
 STAGE=$CFG_STAGE_DIR/025keystone-init-cred
 [ -f $STAGE ] || {
 	sudo keystone-manage credential_setup --keystone-user keystone --keystone-group keystone
+	verify_manage_log $keystone_manage_log
 	touch $STAGE
 }
 
@@ -223,15 +269,11 @@ STAGE=$CFG_STAGE_DIR/027keystone-boostrap
 	  --bootstrap-public-url http://$HOST:5000/v3/ \
 	  --bootstrap-region-id RegionOne
 	sudo systemctl restart apache2
-	sleep 3
+	wait_for_tcp_port 5000 30
 	touch $STAGE
 }
 
-# Do not use -4 - apache listens on IPv6 and IPv4 but LISTEN is shown for IPv6 only...
-ss -ltn | fgrep ':5000' || {
-	echo "ERROR: keystone not listening on port 5000" >&2
-	exit 1
-}
+wait_for_tcp_port 5000 5 Keystone
 
 STAGE=$CFG_STAGE_DIR/028keystone-adminrc
 [ -f $STAGE ] || {
@@ -314,6 +356,7 @@ STAGE=$CFG_STAGE_DIR/033glance-cfg
 STAGE=$CFG_STAGE_DIR/034glance-dbsync
 [ -f $STAGE ] || {
 	sudo -u glance glance-manage db_sync
+	# glance has no manage log???
 	touch $STAGE
 }
 
@@ -323,9 +366,12 @@ STAGE=$CFG_STAGE_DIR/035glance-mkdir
 	sudo chown glance:glance /var/lib/glance/images/
 	sudo systemctl restart glance-api
 	sudo systemctl restart apache2
-	sleep 5
+	sleep 2
+	wait_for_tcp_port 9292 60 "Glance API"
 	touch $STAGE
 }
+
+wait_for_tcp_port 9292 5 "Glance API"
 
 STAGE=$CFG_STAGE_DIR/036glance-image
 [ -f $STAGE ] || {
@@ -418,9 +464,11 @@ STAGE=$CFG_STAGE_DIR/053rabbit-restart
 [ -f $STAGE ] || {
 	sudo systemctl restart rabbitmq-server.service
 	sleep 3
-	ss -ltn | fgrep ':5672'
+	wait_for_tcp_port 5672 30 RabbitMQ
 	touch $STAGE
 }
+
+wait_for_tcp_port 5672 5 RabbitMQ
 
 STAGE=$CFG_STAGE_DIR/054rabbit-account
 [ -f $STAGE ] || {
