@@ -652,7 +652,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	f=/etc/neutron/plugins/ml2/macvtap_agent.ini
 	sudo crudini --set $f macvtap physical_interface_mappings "macvtap:br-ex"
-	sudo crudini --set $f macvtap securitygroup firewall_driver noop
+	sudo crudini --set $f securitygroup firewall_driver noop
 
 	echo "Please restart whole system to ensure that all Configuration changes had been applied."
 	echo "And then rerun this script again..."
@@ -660,6 +660,15 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	exit 0
 }
 
+STAGE=$CFG_STAGE_DIR/068b-neutron-db-manage1
+[ -f $STAGE ] || {
+	sudo -u neutron neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
+	echo "Please restart whole system to ensure that all Configuration changes had been applied."
+	echo "And then rerun this script again..."
+	touch $STAGE
+	exit 0
+}
+	
 wait_for_tcp_port 9696 20 "Neutron API"
 
 STAGE=$CFG_STAGE_DIR/069-create-network
