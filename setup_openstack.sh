@@ -547,7 +547,8 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 	sudo crudini --set $f keystone_authtoken password `extract_svc_pwd $svc`
 
 	sudo crudini --set $f service_user send_service_user_token true
-	sudo crudini --set $f service_user auth_url  "http://$HOST/identity"
+	# auth URL must match keystone_manage --bootstrap-public-url value
+	sudo crudini --set $f service_user auth_url  "http://$HOST:5000/v3"
 	sudo crudini --set $f service_user auth_strategy keystone
 	sudo crudini --set $f service_user auth_type password
 	sudo crudini --set $f service_user project_domain_name Default
@@ -682,6 +683,20 @@ STAGE=$CFG_STAGE_DIR/069-create-network
 	exit 0
 }
 
+STAGE=$CFG_STAGE_DIR/069b-create-subnet
+[ -f $STAGE ] || {
+	( source $CFG_BASE/keystonerc_admin
+	# from: https://docs.openstack.org/install-guide/launch-instance-networks-provider.html
+	openstack subnet create --network provider \
+	  --allocation-pool start=192.168.0.11,end=192.168.0.99 \
+	  --dns-nameserver 1.1.1.1 --gateway 192.168.0.1 \
+	  --subnet-range 192.168.0.0/24 provider
+	)
+	touch $STAGE
+	exit 0
+}
+
+
 # Setting Nova Compute
 # https://docs.openstack.org/nova/2023.2/install/compute-install-ubuntu.html
 
@@ -745,5 +760,23 @@ STAGE=$CFG_STAGE_DIR/081flavors
 	)
 	touch $STAGE
 }
+
+set +x
+echo "Ensure that on list below the 'State' column has value 'Up'"
+( source $CFG_BASE/keystonerc_admin
+	openstack hypervisor list
+)
+
+cat <<EOF
+VM can be created with commands like:
+
+# do not taint main bash environment:
+bash
+source $CFG_BASE/keystonerc_admin
+openstack server create --flavor m1.tiny --image cirros --nic net-id=provider vm1
+# exit OpenStack environment when done:
+exit
+
+EOF
 
 exit 0

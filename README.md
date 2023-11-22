@@ -91,11 +91,41 @@ few recommended:
 
 (openstack) flavor list
 
-# empty: problem: need at least one flavor
++----+-----------+-------+------+-----------+-------+-----------+
+| ID | Name      |   RAM | Disk | Ephemeral | VCPUs | Is Public |
++----+-----------+-------+------+-----------+-------+-----------+
+| 0  | m1.nano   |    64 |    1 |         0 |     1 | True      |
+| 1  | m1.tiny   |   512 |    1 |         0 |     1 | True      |
+| 2  | m1.small  |  2048 |   20 |         0 |     1 | True      |
+| 3  | m1.medium |  4096 |   40 |         0 |     2 | True      |
+| 4  | m1.large  |  8192 |   80 |         0 |     4 | True      |
+| 5  | m1.xlarge | 16384 |  160 |         0 |     8 | True      |
+| 6  | m1.micro  |   128 |    0 |         0 |     1 | True      |
++----+-----------+-------+------+-----------+-------+-----------+
+
+(openstack) security group list
++--------------------------------------+---------+------------------------+----------------------------------+------+
+| ID                                   | Name    | Description            | Project                          | Tags |
++--------------------------------------+---------+------------------------+----------------------------------+------+
+| 684e105f-321c-4e3c-9840-1b2a665cfe4a | default | Default security group | c57cd6e8d03c49a7acbac57dbac2c0b0 | []   |
++--------------------------------------+---------+------------------------+----------------------------------+------+
 ```
 
-TODO:
-- define Flavor
-- try to start VM
 
+TODO:
+
+Problem starting VM:
+```
+openstack server create --flavor m1.tiny --image cirros --nic net-id=provider vm1
+# ok
+# but:
+openstack server list
++--------------------------------------+------+--------+----------+--------+---------+
+| ID                                   | Name | Status | Networks | Image  | Flavor  |
++--------------------------------------+------+--------+----------+--------+---------+
+| 2daf6b4f-8fec-4bde-8e96-f3fb4a62603c | vm1  | ERROR  |          | cirros | m1.tiny |
++--------------------------------------+------+--------+----------+--------+---------+
+openstack server show -f yaml vm1
+```
+TODO...
 
