@@ -713,6 +713,37 @@ STAGE=$CFG_STAGE_DIR/072neutron-dbsync
 	sudo -u neutron neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
 	touch $STAGE
 }
-	
+
+# to launch VM we have to configure 'default' security group (although our 'macvtap' network
+# has NOP firewall it is still good to define basic rules)
+# from https://opendev.org/openstack/devstack/src/branch/master/samples/local.sh
+
+STAGE=$CFG_STAGE_DIR/080security-rules
+[ -f $STAGE ] || {
+	( source $CFG_BASE/keystonerc_admin
+	openstack security group rule create --protocol icmp default
+	openstack security group rule create --protocol tcp --dst-port 22 default
+	)
+	touch $STAGE
+}
+
+# need at lest 1 flavor to launch VM
+STAGE=$CFG_STAGE_DIR/081flavors
+[ -f $STAGE ] || {
+	( source $CFG_BASE/keystonerc_admin
+	# from: https://docs.openstack.org/install-guide/launch-instance.html
+	openstack flavor create --id 0 --vcpus 1 --ram 64 --disk 1 m1.nano
+	# from: https://opendev.org/openstack/devstack/src/branch/master/lib/nova
+	openstack flavor create --id 1 --ram 512 --disk 1 --vcpus 1 m1.tiny
+	openstack flavor create --id 2 --ram 2048 --disk 20 --vcpus 1 m1.small
+	openstack flavor create --id 3 --ram 4096 --disk 40 --vcpus 2 m1.medium
+	openstack flavor create --id 4 --ram 8192 --disk 80 --vcpus 4 m1.large
+	openstack flavor create --id 5 --ram 16384 --disk 160 --vcpus 8 m1.xlarge
+	# from https://opendev.org/openstack/devstack/src/branch/master/samples/local.sh
+	openstack flavor create --id 6 --ram 128 --disk 0 --vcpus 1 m1.micro
+	openstack flavor list
+	)
+	touch $STAGE
+}
 
 exit 0
