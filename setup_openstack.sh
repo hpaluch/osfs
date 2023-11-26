@@ -647,7 +647,8 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	f=/etc/neutron/plugins/ml2/ml2_conf.ini
 	sudo crudini --set $f ml2 type_drivers flat
-	sudo crudini --set $f ml2 tenant_network_types ''
+	sudo crudini --set $f ml2 tenant_network_types local
+	sudo crudini --set $f ml2 external_network_types flat
 	# from: https://docs.openstack.org/neutron/latest/admin/config-macvtap.html
 	sudo crudini --set $f ml2 mechanism_drivers macvtap
 	sudo crudini --set $f ml2_type_flat flat_networks "provider,macvtap"
