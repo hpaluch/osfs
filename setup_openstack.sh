@@ -548,7 +548,8 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 
 	sudo crudini --set $f service_user send_service_user_token true
 	# auth URL must match keystone_manage --bootstrap-public-url value
-	sudo crudini --set $f service_user auth_url  "http://$HOST:5000/v3"
+	#sudo crudini --set $f service_user auth_url  "http://$HOST:5000/v3"
+	sudo crudini --set $f service_user auth_url  "http://$HOST:5000"
 	sudo crudini --set $f service_user auth_strategy keystone
 	sudo crudini --set $f service_user auth_type password
 	sudo crudini --set $f service_user project_domain_name Default
@@ -680,7 +681,6 @@ STAGE=$CFG_STAGE_DIR/069-create-network
 	  --provider-network-type flat provider
 	)
 	touch $STAGE
-	exit 0
 }
 
 STAGE=$CFG_STAGE_DIR/069b-create-subnet
@@ -693,7 +693,6 @@ STAGE=$CFG_STAGE_DIR/069b-create-subnet
 	  --subnet-range 192.168.0.0/24 provider
 	)
 	touch $STAGE
-	exit 0
 }
 
 
