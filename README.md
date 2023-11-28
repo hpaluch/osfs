@@ -16,6 +16,10 @@ Basically I plan to replicate steps shown on my (unfinished!) wiki page:
 
 Finally I was able to query and create Network for future VM.
 
+> But VM creation still fails. Some errors are quite recent:
+> https://bugs.launchpad.net/neutron/+bug/2028285
+
+
 It is quite easy to know if OpenStack is configured properly: few minutes
 after bootup the CPU load should settle to 20% or so (tested on single core VM).
 

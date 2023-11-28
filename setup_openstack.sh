@@ -511,7 +511,7 @@ STAGE=$CFG_STAGE_DIR/063nova-svc
 
 STAGE=$CFG_STAGE_DIR/064neutron-pkg
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y neutron-server neutron-plugin-ml2 neutron-linuxbridge-agent \
+	sudo eatmydata apt-get install -y neutron-server neutron-plugin-ml2 \
        		python3-neutronclient neutron-macvtap-agent
 	touch $STAGE
 }
@@ -677,7 +677,7 @@ wait_for_tcp_port 9696 20 "Neutron API"
 STAGE=$CFG_STAGE_DIR/069-create-network
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
-	  openstack network create  --share --external \
+	  openstack network create  --external \
 	  --provider-physical-network provider \
 	  --provider-network-type flat provider
 	)
