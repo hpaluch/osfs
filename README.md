@@ -18,6 +18,17 @@ Finally I was able to query and create Network for future VM.
 
 > But VM creation still fails. Some errors are quite recent:
 > https://bugs.launchpad.net/neutron/+bug/2028285
+>
+> To workaround this bug - when you (re)start `neutron-server` service.
+> Your first command should be for example `openstack network list`.
+> Only after network command you can issue Nova command (for example
+> `openstack server list`). Otherwise it will fail with persistent
+> error:
+>
+> `AttributeError: type object 'Port' has no attribute 'port_forwardings'`
+> 
+> Once this error occurs you have to restart `neutron-server` service and
+> try again commands in "right" order...
 
 
 It is quite easy to know if OpenStack is configured properly: few minutes
@@ -138,3 +149,49 @@ port create --network provider port1
 port set port1 --vnic-type macvtap
 server create --flavor m1.tiny --image cirros --nic port-id=port1 vm3
 ```
+
+For the first time got different error than Neutron:
+- from `/var/log/nova/nova-conductor.log`
+
+```
+023-11-28 17:02:11.853 1109 ERROR nova.scheduler.utils [req-4c672f5e-faa3-4783-b84a-1c2d45c0b6d1 658ba1b46eb04903a0dc86a4b77842e1 e4
+52b873d3ac4ef48d5edf7f9de8db1b - default default] [instance: d54cd7b2-b2fa-4df0-b7e2-7b3f83c94333] Error from last host: osfs1 (node 
+osfs1): ['Traceback (most recent call last):\n', '  File "/usr/lib/python3/dist-packages/nova/compute/manager.py", line 2487, in _bui
+ld_and_run_instance\n    with self.rt.instance_claim(context, instance, node, allocs,\n', '  File "/usr/lib/python3/dist-packages/osl
+o_concurrency/lockutils.py", line 391, in inner\n    return f(*args, **kwargs)\n', '  File "/usr/lib/python3/dist-packages/nova/compu
+te/resource_tracker.py", line 171, in instance_claim\n    claim = claims.Claim(context, instance, nodename, self, cn,\n', '  File "/u
+sr/lib/python3/dist-packages/nova/compute/claims.py", line 74, in __init__\n    self._claim_test(compute_node, limits)\n', '  File "/
+usr/lib/python3/dist-packages/nova/compute/claims.py", line 117, in _claim_test\n    raise exception.ComputeResourcesUnavailable(reas
+on=\n', 'nova.exception.ComputeResourcesUnavailable: Insufficient compute resources: Claim pci failed.\n', '\nDuring handling of the 
+above exception, another exception occurred:\n\n', 'Traceback (most recent call last):\n', '  File "/usr/lib/python3/dist-packages/no
+va/compute/manager.py", line 2336, in _do_build_and_run_instance\n    self._build_and_run_instance(context, instance, image,\n', '  F
+ile "/usr/lib/python3/dist-packages/nova/compute/manager.py", line 2538, in _build_and_run_instance\n    raise exception.RescheduledE
+xception(\n', 'nova.exception.RescheduledException: Build of instance d54cd7b2-b2fa-4df0-b7e2-7b3f83c94333 was re-scheduled: Insuffic
+ient compute resources: Claim pci failed.\n']
+```
+
+
+Example how to get function, filename and line in log file:
+
+```diff
+diff -u /etc/neutron/neutron.conf{.orig,}
+--- /etc/neutron/neutron.conf.orig	2023-11-28 16:45:22.876726934 +0000
++++ /etc/neutron/neutron.conf	2023-11-28 16:47:34.727207600 +0000
+@@ -444,6 +444,7 @@
+ # Format string to use for log messages when context is undefined. Used by
+ # oslo_log.formatters.ContextFormatter (string value)
+ #logging_default_format_string = %(asctime)s.%(msecs)03d %(process)d %(levelname)s %(name)s [-] %(instance)s%(message)s
++logging_default_format_string = %(asctime)s %(levelname)s %(funcName)s %(pathname)s:%(lineno)d %(name)s [-] %(instance)s%(message)s
+ 
+ # Additional data to append to log message when logging level for the message
+ # is DEBUG. Used by oslo_log.formatters.ContextFormatter (string value)
+```
+
+And then:
+
+```shell
+systemctl stop neutron-server
+rm /var/log/neutron/neutron-server.log
+systemctl start neutron-server
+```
+
