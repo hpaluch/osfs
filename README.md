@@ -133,3 +133,8 @@ openstack server show -f yaml vm1
 ```
 TODO...
 
+```
+port create --network provider port1
+port set port1 --vnic-type macvtap
+server create --flavor m1.tiny --image cirros --nic port-id=port1 vm3
+```

@@ -136,7 +136,7 @@ STAGE=$CFG_STAGE_DIR/001basepkg
 
 STAGE=$CFG_STAGE_DIR/002enable-os-repo
 [ -f $STAGE ] || {
-	sudo eatmydata add-apt-repository cloud-archive:$RELEASE
+	#sudo eatmydata add-apt-repository cloud-archive:$RELEASE
 	sudo eatmydata apt-get install -y python3-openstackclient
 	touch $STAGE
 }
@@ -646,7 +646,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f oslo_concurrency lock_path /var/lib/neutron/tmp
 
 	f=/etc/neutron/plugins/ml2/ml2_conf.ini
-	sudo crudini --set $f ml2 type_drivers flat
+	sudo crudini --set $f ml2 type_drivers flat,local
 	sudo crudini --set $f ml2 tenant_network_types local
 	sudo crudini --set $f ml2 external_network_types flat
 	# from: https://docs.openstack.org/neutron/latest/admin/config-macvtap.html
