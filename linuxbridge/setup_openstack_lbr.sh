@@ -137,13 +137,14 @@ STAGE=$CFG_STAGE_DIR/001basepkg
 
 STAGE=$CFG_STAGE_DIR/002enable-os-repo
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y python3-openstackclient
+	# we no longer enable OpenStack repo, but rather use Ubuntu's Default (Yoga release?)
+	sudo apt-get install -y python3-openstackclient
 	touch $STAGE
 }
 
 STAGE=$CFG_STAGE_DIR/003install-mysql
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y mariadb-server python3-pymysql
+	sudo apt-get install -y mariadb-server python3-pymysql
 	touch $STAGE
 }
 
@@ -189,7 +190,7 @@ mysql -u root -p`cat $MYSQL_ROOT_PWD_FILE` -e 'show databases' || {
 
 STAGE=$CFG_STAGE_DIR/010install-memcached
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y memcached
+	sudo apt-get install -y memcached
 	touch $STAGE
 }
 
@@ -212,7 +213,7 @@ STAGE=$CFG_STAGE_DIR/020keystone-db
 
 STAGE=$CFG_STAGE_DIR/021keystone-pkg
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y keystone
+	sudo apt-get install -y keystone
 	touch $STAGE
 }
 
@@ -296,7 +297,8 @@ EOF
 # but use new shell () to declutter environment
 (
 	source $CFG_BASE/keystonerc_admin
-	openstack service list || {
+	#true ||
+       	openstack service list || {
 		echo "ERROR: Keystone not responding" >&2
 		exit 1
 	}
@@ -325,7 +327,7 @@ STAGE=$CFG_STAGE_DIR/031glance-svc
 
 STAGE=$CFG_STAGE_DIR/032glance-pkg
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y glance
+	sudo apt-get install -y glance
 	touch $STAGE
 }
 
@@ -402,7 +404,7 @@ STAGE=$CFG_STAGE_DIR/041placement-svc
 
 STAGE=$CFG_STAGE_DIR/042placement-pkg
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y placement-api python3-osc-placement
+	sudo apt-get install -y placement-api python3-osc-placement
 	touch $STAGE
 }
 
@@ -511,14 +513,21 @@ STAGE=$CFG_STAGE_DIR/063nova-svc
 
 STAGE=$CFG_STAGE_DIR/064neutron-pkg
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y neutron-server neutron-plugin-ml2 \
+	sudo apt-get install -y neutron-server neutron-plugin-ml2 \
        		python3-neutronclient neutron-linuxbridge-agent
+	# Disable and stop all services until they are properly configured to avoid eating CPU, etc...
+	sudo systemctl disable --now neutron-linuxbridge-cleanup.service \
+		neutron-linuxbridge-agent.service neutron-server.service
 	touch $STAGE
 }
 
 STAGE=$CFG_STAGE_DIR/065nova-pkg
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y nova-api nova-conductor nova-novncproxy nova-scheduler
+	sudo apt-get install -y nova-api nova-conductor nova-novncproxy nova-scheduler
+	# Disable and stop all services until they are properly configured to avoid eating CPU, etc...
+	# Except qemu-kvm.service
+	sudo systemctl disable --now nova-conductor.service nova-api.service \
+		nova-scheduler.service nova-novncproxy.service
 	touch $STAGE
 }
 
@@ -590,6 +599,9 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 	#sudo diff $f{.orig,}
 	touch $STAGE
 }
+
+exit 1234
+
 STAGE=$CFG_STAGE_DIR/067-nova-syncd
 [ -f $STAGE ] || {
 	sudo -u nova nova-manage api_db sync
