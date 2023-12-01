@@ -752,14 +752,15 @@ STAGE=$CFG_STAGE_DIR/081-create-subnet
 	touch $STAGE
 }
 
-exit 1234
-
 # Setting Nova Compute
 # https://docs.openstack.org/nova/2023.2/install/compute-install-ubuntu.html
 
 STAGE=$CFG_STAGE_DIR/090nova-compute-pkg
 [ -f $STAGE ] || {
 	sudo apt-get install -y nova-compute
+	sudo systemctl disable --now nova-compute.service
+	# remove log - we did not configured Nova yet
+	sudo rm -f /var/log/nova/nova-compute.log
 	touch $STAGE
 }
 
@@ -769,7 +770,7 @@ STAGE=$CFG_STAGE_DIR/091nova-compute-cfg
 	f=/etc/nova/nova.conf
 	sudo crudini --set $f vnc novncproxy_base_url  "http://$HOST:6080/vnc_auto.html"
 
-	sudo systemctl restart nova-compute
+	sudo systemctl enable --now nova-compute.service
 	sleep 10
 
 	( source $CFG_BASE/keystonerc_admin
