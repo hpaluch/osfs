@@ -518,6 +518,8 @@ STAGE=$CFG_STAGE_DIR/064neutron-pkg
 	# Disable and stop all services until they are properly configured to avoid eating CPU, etc...
 	sudo systemctl disable --now neutron-linuxbridge-cleanup.service \
 		neutron-linuxbridge-agent.service neutron-server.service
+	# remove clutter of errors because services are not configured yet
+	sudo find /var/log/neutron/ -name '*.log' -a -delete
 	touch $STAGE
 }
 
@@ -528,6 +530,8 @@ STAGE=$CFG_STAGE_DIR/065nova-pkg
 	# Except qemu-kvm.service
 	sudo systemctl disable --now nova-conductor.service nova-api.service \
 		nova-scheduler.service nova-novncproxy.service
+	# remove clutter of errors because services are not configured yet
+	sudo find /var/log/nova/ -name '*.log' -a -delete
 	touch $STAGE
 }
 
@@ -710,10 +714,21 @@ STAGE=$CFG_STAGE_DIR/069-nova-conductor
 	touch $STAGE
 }
 
-exit 1234
-	
+# Now start Neutron services in order
+STAGE=$CFG_STAGE_DIR/070-neutron-server
+[ -f $STAGE ] || {
+	sudo systemctl enable --now neutron-server.service
+	wait_for_tcp_port 9696 60 "Neutron API"
+	touch $STAGE
+}
+wait_for_tcp_port 9696 5 "Neutron API"
 
-wait_for_tcp_port 9696 20 "Neutron API"
+STAGE=$CFG_STAGE_DIR/070-neutron-linuxbridge
+[ -f $STAGE ] || {
+	sudo systemctl enable --now neutron-linuxbridge-cleanup.service neutron-linuxbridge-agent.service
+	# FIXME: Know no way how to detect if service is running properly
+	touch $STAGE
+}
 
 exit 1234
 
