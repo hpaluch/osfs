@@ -659,10 +659,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f DEFAULT enable_isolated_metadata True
 
 	touch $STAGE
-	exit 0
 }
-
-exit 1234
 
 STAGE=$CFG_STAGE_DIR/067-nova-syncd
 [ -f $STAGE ] || {
@@ -671,26 +668,54 @@ STAGE=$CFG_STAGE_DIR/067-nova-syncd
 	sudo -u nova nova-manage cell_v2 create_cell --name=cell1 --verbose
 	sudo -u nova nova-manage db sync
         sudo -u nova nova-manage cell_v2 list_cells
-	for s in nova-api nova-scheduler nova-conductor nova-novncproxy
-	do
-		sudo systemctl restart $s
-	done
-	wait_for_tcp_port 8774 60 "Nova API"
+	verify_manage_log /var/log/nova/nova-manage.log
 	touch $STAGE
 }
-
-wait_for_tcp_port 8774 5 "Nova API"
 
 STAGE=$CFG_STAGE_DIR/068b-neutron-db-manage1
 [ -f $STAGE ] || {
 	sudo -u neutron neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
-	echo "Please restart whole system to ensure that all Configuration changes had been applied."
-	echo "And then rerun this script again..."
+	# TODO: Verify log on stdout
 	touch $STAGE
-	exit 0
 }
+
+# Enable + start Nova and Neutron in proper order (ehm)...
+STAGE=$CFG_STAGE_DIR/069-nova-proxy
+[ -f $STAGE ] || {
+	sudo systemctl enable --now nova-novncproxy.service
+	wait_for_tcp_port 6080 60 "Nova NoVNC proxy"
+	touch $STAGE
+}
+wait_for_tcp_port 6080 5 "Nova NoVNC proxy"
+
+STAGE=$CFG_STAGE_DIR/069-nova-api
+[ -f $STAGE ] || {
+	sudo systemctl enable --now nova-api.service
+	wait_for_tcp_port 8774 60 "Nova API"
+	touch $STAGE
+}
+wait_for_tcp_port 8774 5 "Nova API"
+
+STAGE=$CFG_STAGE_DIR/069-nova-scheduler
+[ -f $STAGE ] || {
+	sudo systemctl enable --now nova-scheduler.service
+	# FIXME: Know no way how to find if scheduler is running (no LISTEN port?)
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/069-nova-conductor
+[ -f $STAGE ] || {
+	sudo systemctl enable --now nova-conductor.service
+	# FIXME: Know no way how to find if conductor is running (no LISTEN port?)
+	touch $STAGE
+}
+
+exit 1234
 	
+
 wait_for_tcp_port 9696 20 "Neutron API"
+
+exit 1234
 
 STAGE=$CFG_STAGE_DIR/069-create-network
 [ -f $STAGE ] || {
