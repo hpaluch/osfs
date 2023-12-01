@@ -730,41 +730,40 @@ STAGE=$CFG_STAGE_DIR/070-neutron-linuxbridge
 	touch $STAGE
 }
 
-exit 1234
-
-STAGE=$CFG_STAGE_DIR/069-create-network
+# create provider network without VLAN - see: https://docs.openstack.org/neutron/latest/admin/deploy-lb-provider.html#create-initial-networks
+STAGE=$CFG_STAGE_DIR/080-create-network
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
-	  openstack network create  --external \
-	  --provider-physical-network provider \
-	  --provider-network-type flat provider
+	  openstack network create --share --provider-physical-network provider \
+		  --provider-network-type flat provider1
 	)
 	touch $STAGE
 }
 
-STAGE=$CFG_STAGE_DIR/069b-create-subnet
+STAGE=$CFG_STAGE_DIR/081-create-subnet
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
 	# from: https://docs.openstack.org/install-guide/launch-instance-networks-provider.html
-	openstack subnet create --network provider \
-	  --allocation-pool start=192.168.0.11,end=192.168.0.99 \
+	openstack subnet create --network provider1 \
+	  --allocation-pool start=192.168.0.150,end=192.168.0.200 \
 	  --dns-nameserver 1.1.1.1 --gateway 192.168.0.1 \
-	  --subnet-range 192.168.0.0/24 provider
+	  --subnet-range 192.168.0.0/24 provider1-v4
 	)
 	touch $STAGE
 }
 
+exit 1234
 
 # Setting Nova Compute
 # https://docs.openstack.org/nova/2023.2/install/compute-install-ubuntu.html
 
-STAGE=$CFG_STAGE_DIR/070nova-compute-pkg
+STAGE=$CFG_STAGE_DIR/090nova-compute-pkg
 [ -f $STAGE ] || {
-	sudo eatmydata apt-get install -y nova-compute
+	sudo apt-get install -y nova-compute
 	touch $STAGE
 }
 
-STAGE=$CFG_STAGE_DIR/071nova-compute-cfg
+STAGE=$CFG_STAGE_DIR/091nova-compute-cfg
 [ -f $STAGE ] || {
 	svc=nova
 	f=/etc/nova/nova.conf
@@ -781,7 +780,7 @@ STAGE=$CFG_STAGE_DIR/071nova-compute-cfg
 	touch $STAGE
 }
 
-STAGE=$CFG_STAGE_DIR/072neutron-dbsync
+STAGE=$CFG_STAGE_DIR/092neutron-dbsync
 [ -f $STAGE ] || {
 	sudo -u neutron neutron-db-manage --config-file /etc/neutron/neutron.conf --config-file /etc/neutron/plugins/ml2/ml2_conf.ini upgrade head
 	touch $STAGE
@@ -791,7 +790,7 @@ STAGE=$CFG_STAGE_DIR/072neutron-dbsync
 # has NOP firewall it is still good to define basic rules)
 # from https://opendev.org/openstack/devstack/src/branch/master/samples/local.sh
 
-STAGE=$CFG_STAGE_DIR/080security-rules
+STAGE=$CFG_STAGE_DIR/100security-rules
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
 	openstack security group rule create --protocol icmp default
@@ -801,7 +800,7 @@ STAGE=$CFG_STAGE_DIR/080security-rules
 }
 
 # need at lest 1 flavor to launch VM
-STAGE=$CFG_STAGE_DIR/081flavors
+STAGE=$CFG_STAGE_DIR/101flavors
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
 	# from: https://docs.openstack.org/install-guide/launch-instance.html
@@ -831,7 +830,7 @@ VM can be created with commands like:
 # do not taint main bash environment:
 bash
 source $CFG_BASE/keystonerc_admin
-openstack server create --flavor m1.tiny --image cirros --nic net-id=provider vm1
+openstack server create --flavor m1.tiny --image cirros --nic net-id=provider1 vm1
 # exit OpenStack environment when done:
 exit
 
