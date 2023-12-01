@@ -600,25 +600,6 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 	touch $STAGE
 }
 
-exit 1234
-
-STAGE=$CFG_STAGE_DIR/067-nova-syncd
-[ -f $STAGE ] || {
-	sudo -u nova nova-manage api_db sync
-	sudo -u nova nova-manage cell_v2 map_cell0
-	sudo -u nova nova-manage cell_v2 create_cell --name=cell1 --verbose
-	sudo -u nova nova-manage db sync
-        sudo -u nova nova-manage cell_v2 list_cells
-	for s in nova-api nova-scheduler nova-conductor nova-novncproxy
-	do
-		sudo systemctl restart $s
-	done
-	wait_for_tcp_port 8774 60 "Nova API"
-	touch $STAGE
-}
-
-wait_for_tcp_port 8774 5 "Nova API"
-
 # configuration from https://docs.openstack.org/neutron/latest/install/controller-install-option1-ubuntu.html
 STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 [ -f $STAGE ] || {
@@ -657,23 +638,48 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	sudo crudini --set $f oslo_concurrency lock_path /var/lib/neutron/tmp
 
+	# https://docs.openstack.org/neutron/latest/admin/deploy-lb-provider.html
 	f=/etc/neutron/plugins/ml2/ml2_conf.ini
-	sudo crudini --set $f ml2 type_drivers flat,local
-	sudo crudini --set $f ml2 tenant_network_types local
-	sudo crudini --set $f ml2 external_network_types flat
-	# from: https://docs.openstack.org/neutron/latest/admin/config-macvtap.html
-	sudo crudini --set $f ml2 mechanism_drivers macvtap
-	sudo crudini --set $f ml2_type_flat flat_networks "provider,macvtap"
+	sudo crudini --set $f ml2 type_drivers flat,vlan
+	sudo crudini --set $f ml2 tenant_network_types ''
+	sudo crudini --set $f ml2 mechanism_drivers linuxbridge
+	sudo crudini --set $f ml2 extension_drivers port_security
+	sudo crudini --set $f ml2_type_flat flat_networks provider
+	sudo crudini --set $f ml2_type_vlan network_vlan_ranges provider
 
-	f=/etc/neutron/plugins/ml2/macvtap_agent.ini
-	sudo crudini --set $f macvtap physical_interface_mappings "macvtap:br-ex"
-	sudo crudini --set $f securitygroup firewall_driver noop
+	# Agent part (Compute)
+	f=/etc/neutron/plugins/ml2/linuxbridge_agent.ini
+	sudo crudini --set $f linux_bridge physical_interface_mappings  "provider:dummy0"
+	sudo crudini --set $f vxlan enable_vxlan False
+	sudo crudini --set $f securitygroup firewall_driver iptables
 
-	echo "Please restart whole system to ensure that all Configuration changes had been applied."
-	echo "And then rerun this script again..."
+	# we don't plan to use DHCP but just following docs
+	f=/etc/neutron/plugins/ml2/dhcp_agent.ini
+	sudo crudini --set $f DEFAULT interface_driver linuxbridge
+	sudo crudini --set $f DEFAULT enable_isolated_metadata True
+
 	touch $STAGE
 	exit 0
 }
+
+exit 1234
+
+STAGE=$CFG_STAGE_DIR/067-nova-syncd
+[ -f $STAGE ] || {
+	sudo -u nova nova-manage api_db sync
+	sudo -u nova nova-manage cell_v2 map_cell0
+	sudo -u nova nova-manage cell_v2 create_cell --name=cell1 --verbose
+	sudo -u nova nova-manage db sync
+        sudo -u nova nova-manage cell_v2 list_cells
+	for s in nova-api nova-scheduler nova-conductor nova-novncproxy
+	do
+		sudo systemctl restart $s
+	done
+	wait_for_tcp_port 8774 60 "Nova API"
+	touch $STAGE
+}
+
+wait_for_tcp_port 8774 5 "Nova API"
 
 STAGE=$CFG_STAGE_DIR/068b-neutron-db-manage1
 [ -f $STAGE ] || {
