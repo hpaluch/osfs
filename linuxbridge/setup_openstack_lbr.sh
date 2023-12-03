@@ -548,6 +548,9 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 	sudo crudini --set $f database connection "mysql+pymysql://$svc:$p@$HOST/nova"
 	sudo crudini --set $f DEFAULT transport_url "rabbit://openstack:$rp@$HOST:5672/"
 	sudo crudini --set $f DEFAULT my_ip "$HOST_IP"
+	# configure VM using virtual CD ROM drive instead of Metadata server
+	sudo crudini --set $f DEFAULT force_config_drive True
+
 	sudo crudini --set $f api auth_strategy keystone
 
 	sudo crudini --set $f keystone_authtoken auth_url "http://$HOST:5000/"
@@ -653,7 +656,10 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	# Agent part (Compute)
 	f=/etc/neutron/plugins/ml2/linuxbridge_agent.ini
-	sudo crudini --set $f linux_bridge physical_interface_mappings  "provider:dummy0"
+	# sudo crudini --set $f linux_bridge physical_interface_mappings  "provider:dummy0"
+	# see: https://blueprints.launchpad.net/neutron/+spec/phy-net-bridge-mapping
+	# see: https://specs.openstack.org/openstack/neutron-specs/specs/liberty/phy-net-bridge-mapping.html
+	sudo crudini --set $f linux_bridge bridge_mappings "provider:br-ex"
 	sudo crudini --set $f vxlan enable_vxlan False
 	sudo crudini --set $f securitygroup firewall_driver iptables
 
