@@ -70,11 +70,11 @@ verify_manage_log ()
 	local not_regex=" INFO "
 	[ $# -lt 2 ] || not_regex="$2"
 
-	[ -r "$f" ] || {
+	sudo test -r "$f" || {
 		echo "ERROR: Unable to read logfile '$f'" >&2
 		exit 1
 	}
-	! grep -vE "$not_regex" $f || {
+	! sudo grep -vE "$not_regex" $f || {
 		echo "ERROR: Unexpected output (other than '$not_regex' level) in '$f'" >&2
 		exit 1
 	}
