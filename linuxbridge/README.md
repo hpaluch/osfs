@@ -11,6 +11,37 @@ We have two special interfaces:
 
 The `dummy0` will be used as target for LinuxBridge configuration (we have to provide such interface)
 
+TODO: It should be possible to assign tap dirclty to manual bridge:
+- https://blueprints.launchpad.net/neutron/+spec/phy-net-bridge-mapping
+- https://review.opendev.org/c/openstack/neutron/+/224357
+
+But Nova most of time hardcodes interfaces. We have to check:
+- `/usr/lib/python3/dist-packages/nova/network/neutron.py`
+- function `def _nw_info_build_network(self, context, port, networks, subnets):`
+
+Workaround - to make Nova to use manual bridge following hard-coded patch is needed:
+
+```diff
+--- /usr/lib/python3/dist-packages/nova/network/neutron.py.orig	2023-12-03 15:42:51.478133357 +0000
++++ /usr/lib/python3/dist-packages/nova/network/neutron.py	2023-12-03 15:44:17.850213932 +0000
+@@ -3278,9 +3278,11 @@
+                                       CONF.neutron.ovs_bridge)
+             ovs_interfaceid = port['id']
+         elif vif_type == network_model.VIF_TYPE_BRIDGE:
+-            bridge = port_details.get(network_model.VIF_DETAILS_BRIDGE_NAME,
+-                                      "brq" + port['network_id'])
+-            should_create_bridge = True
++            LOG.info("XXXHP: manual bridge")
++            #bridge = port_details.get(network_model.VIF_DETAILS_BRIDGE_NAME,
++            #                          "brq" + port['network_id'])
++            bridge = port_details.get(network_model.VIF_DETAILS_BRIDGE_NAME, "br-ex")
++            #should_create_bridge = True
+         elif vif_type == network_model.VIF_TYPE_DVS:
+             # The name of the DVS port group will contain the neutron
+             # network id
+```
+
+
 Milestone: was able to create VM in state active:
 
 ```
