@@ -56,18 +56,36 @@ openstack server list
 
 But need to somehow glue linxubridge to main bridge....
 
-Here is list of bridges and interfaces:
-```
+If patch is working properly you should see both `tap` and main Host `eth0` assigned to bridge
+`br-ex`:
+
+```shell
 $ brctl show
 
-bridge name		bridge id		STP enabled	interfaces
-br-ex			8000.02e3a04e339c	no		eth0
-brq1999b5b6-e5		8000.7a3d6eece004	no		dummy0
+bridge name	bridge id		STP enabled	interfaces
+br-ex		8000.161b39676e83	no		eth0
+							tap8b525fb4-07
+virbr0		8000.525400251104	yes	
 ```
 
-Where
-- `br-ex` my bridge bound to real network interface `eth0` (routed to Internet)
-- `brq1999b5b6-e5` dynamically generated bridge by OpenStack bound to `dummy0`
-- what I need to somehow connect `dummy0` also to `br-ex`
+# Problems
 
+Fighting with firewall. Recommended following Logging patch:
+
+```diff
+--- /usr/lib/python3/dist-packages/neutron/agent/linux/iptables_firewall.py.orig	2023-12-03 16:57:07.335108916 +0000
++++ /usr/lib/python3/dist-packages/neutron/agent/linux/iptables_firewall.py	2023-12-03 16:58:41.913760392 +0000
+@@ -304,6 +304,8 @@
+ 
+     def _add_fallback_chain_v4v6(self):
+         self.iptables.ipv4['filter'].add_chain('sg-fallback')
++        self.iptables.ipv4['filter'].add_rule('sg-fallback', '-j LOG',
++                                              comment=ic.UNMATCH_DROP)
+         self.iptables.ipv4['filter'].add_rule('sg-fallback', '-j DROP',
+                                               comment=ic.UNMATCH_DROP)
+         self.iptables.ipv6['filter'].add_chain('sg-fallback')
+```
+
+You can then use `dmesg` to at least see what was dropped. However there are additional DROP rules
+that causes me troubles...
 
