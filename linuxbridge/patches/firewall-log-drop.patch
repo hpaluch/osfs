@@ -1,0 +1,11 @@
+--- /usr/lib/python3/dist-packages/neutron/agent/linux/iptables_firewall.py.orig	2023-12-03 16:57:07.335108916 +0000
++++ /usr/lib/python3/dist-packages/neutron/agent/linux/iptables_firewall.py	2023-12-03 16:58:41.913760392 +0000
+@@ -304,6 +304,8 @@
+ 
+     def _add_fallback_chain_v4v6(self):
+         self.iptables.ipv4['filter'].add_chain('sg-fallback')
++        self.iptables.ipv4['filter'].add_rule('sg-fallback', '-j LOG',
++                                              comment=ic.UNMATCH_DROP)
+         self.iptables.ipv4['filter'].add_rule('sg-fallback', '-j DROP',
+                                               comment=ic.UNMATCH_DROP)
+         self.iptables.ipv6['filter'].add_chain('sg-fallback')

@@ -1,0 +1,17 @@
+--- /usr/lib/python3/dist-packages/nova/network/neutron.py.orig	2023-12-03 15:42:51.478133357 +0000
++++ /usr/lib/python3/dist-packages/nova/network/neutron.py	2023-12-03 15:44:17.850213932 +0000
+@@ -3278,9 +3278,11 @@
+                                       CONF.neutron.ovs_bridge)
+             ovs_interfaceid = port['id']
+         elif vif_type == network_model.VIF_TYPE_BRIDGE:
+-            bridge = port_details.get(network_model.VIF_DETAILS_BRIDGE_NAME,
+-                                      "brq" + port['network_id'])
+-            should_create_bridge = True
++            LOG.info("XXXHP: manual bridge")
++            #bridge = port_details.get(network_model.VIF_DETAILS_BRIDGE_NAME,
++            #                          "brq" + port['network_id'])
++            bridge = port_details.get(network_model.VIF_DETAILS_BRIDGE_NAME, "br-ex")
++            #should_create_bridge = True
+         elif vif_type == network_model.VIF_TYPE_DVS:
+             # The name of the DVS port group will contain the neutron
+             # network id
