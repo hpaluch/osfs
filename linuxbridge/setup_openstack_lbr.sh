@@ -575,8 +575,8 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 	sudo crudini --set $f service_user password "$np"
 
 	sudo crudini --set $f vnc enabled true
-	sudo crudini --set $f vnc server_listen "$HOST_IP"
-	sudo crudini --set $f server_proxyclient_address  "$HOST_IP"
+	#sudo crudini --set $f vnc server_listen "$HOST_IP"
+	#sudo crudini --set $f spice server_proxyclient_address  "$HOST_IP"
 
 	sudo crudini --set $f glance api_servers  "http://$HOST:9292"
 	sudo crudini --set $f oslo_concurrency lock_path  /var/lib/nova/tmp
