@@ -89,3 +89,8 @@ Fighting with firewall. Recommended following Logging patch:
 You can then use `dmesg` to at least see what was dropped. However there are additional DROP rules
 that causes me troubles...
 
+Playing with:
+```shell
+sysctl -w net.ipv4.conf.all.proxy_arp=1
+```
+
