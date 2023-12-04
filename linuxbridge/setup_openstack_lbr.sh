@@ -653,6 +653,8 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f ml2 extension_drivers port_security
 	sudo crudini --set $f ml2_type_flat flat_networks provider
 	sudo crudini --set $f ml2_type_vlan network_vlan_ranges provider
+	# https://docs.openstack.org/neutron/latest/admin/deploy-lb.html
+	sudo crudini --set $f securitygroup enable_ipset False
 
 	# Agent part (Compute)
 	f=/etc/neutron/plugins/ml2/linuxbridge_agent.ini
@@ -661,6 +663,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f linux_bridge bridge_mappings "provider:br-ex"
 	sudo crudini --set $f vxlan enable_vxlan False
 	sudo crudini --set $f securitygroup firewall_driver iptables
+	sudo crudini --set $f securitygroup enable_security_group False
 
 	# we don't plan to use DHCP but just following docs
 	f=/etc/neutron/plugins/ml2/dhcp_agent.ini
@@ -740,6 +743,7 @@ STAGE=$CFG_STAGE_DIR/080-create-network
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
 	  openstack network create --share --provider-physical-network provider \
+		  --disable-port-security \
 		  --provider-network-type flat provider1
 	)
 	touch $STAGE
