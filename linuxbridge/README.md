@@ -4,14 +4,12 @@ with LinuxBridge.
 Based guide:
 - https://docs.openstack.org/neutron/latest/admin/deploy-lb-provider.html
 
-We have two special interfaces:
+We have one special interface
 - Bridge `br-ex` where is mapped `eth0` with static IP 192.168.0.11 and Gateway 192.168.0.1 - main
    routable network interface
-- `dummy0` interface with static IP 192.168.0.12
 
-The `dummy0` will be used as target for LinuxBridge configuration (we have to provide such interface)
 
-TODO: It should be possible to assign tap dirclty to manual bridge:
+now I have assigned manual bridge
 - https://blueprints.launchpad.net/neutron/+spec/phy-net-bridge-mapping
 - https://review.opendev.org/c/openstack/neutron/+/224357
 
@@ -20,6 +18,7 @@ But Nova most of time hardcodes interfaces. We have to check:
 - function `def _nw_info_build_network(self, context, port, networks, subnets):`
 
 Workaround - to make Nova to use manual bridge following hard-coded patch is needed:
+- also under `patches/manual-bridge.patch`
 
 ```diff
 --- /usr/lib/python3/dist-packages/nova/network/neutron.py.orig	2023-12-03 15:42:51.478133357 +0000
@@ -54,23 +53,18 @@ openstack server list
 +--------------------------------------+------+--------+-------------------------+--------+---------+
 ```
 
-But need to somehow glue linxubridge to main bridge....
-
-If patch is working properly you should see both `tap` and main Host `eth0` assigned to bridge
-`br-ex`:
-
-```shell
-$ brctl show
-
-bridge name	bridge id		STP enabled	interfaces
-br-ex		8000.161b39676e83	no		eth0
-							tap8b525fb4-07
-virbr0		8000.525400251104	yes	
-```
-
 # Problems
 
-Fighting with firewall. Recommended following Logging patch:
+Was fighting with firewall. So I switched it off using:
+```ini
+# /etc/neutron/plugins/ml2/linuxbridge_agent.ini
+[securitygroup]
+enable_security_group = False
+enable_ipset = False
+```
+
+If you insists on having firewall I recommend following Logging patch to see (with `dmesg`) which
+packets were dropped:
 
 ```diff
 --- /usr/lib/python3/dist-packages/neutron/agent/linux/iptables_firewall.py.orig	2023-12-03 16:57:07.335108916 +0000
@@ -86,11 +80,8 @@ Fighting with firewall. Recommended following Logging patch:
          self.iptables.ipv6['filter'].add_chain('sg-fallback')
 ```
 
-You can then use `dmesg` to at least see what was dropped. However there are additional DROP rules
-that causes me troubles...
+Warning!
 
-Playing with:
-```shell
-sysctl -w net.ipv4.conf.all.proxy_arp=1
-```
+There is also ARP filter on ebtables (or nftables) level - it can be disabled with
+`--disable-port-security ` parameter when creating network with `openstack network ...` command.
 

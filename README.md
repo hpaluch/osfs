@@ -19,20 +19,9 @@ that `macvtap` agent always use VLANs, which is not my setup.
 
 
 I have nice success with `linuxbridge` version under [linuxbridge/](linuxbridge/) folder.
-Even VM starts up. However there is extra bridge connected to `dummy0` but
-I need to somehow connected it to manual `br-ex` bridge (not to dynamically
-generated `brq533a578-96` as shown below:
-
-```shell
-$ brctl show
-
-bridge name	bridge id		STP enabled	interfaces
-br-ex		8000.161b39676e83	no		eth0
-brq533a578e-96		8000.cec946859d45	no		dummy0
-							tap80d4bdf2-cb
-virbr0		8000.525400251104	yes		
-```
-
+For the first time it works, however you need to apply
+at least this patch: [linuxbridge/patches/manual-bridge.patch](linuxbridge/patches/manual-bridge.patch)
+to force Nova compute to use existing bridge.
 
 # Requirements
 
