@@ -656,7 +656,6 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	# Agent part (Compute)
 	f=/etc/neutron/plugins/ml2/linuxbridge_agent.ini
-	# sudo crudini --set $f linux_bridge physical_interface_mappings  "provider:dummy0"
 	# see: https://blueprints.launchpad.net/neutron/+spec/phy-net-bridge-mapping
 	# see: https://specs.openstack.org/openstack/neutron-specs/specs/liberty/phy-net-bridge-mapping.html
 	sudo crudini --set $f linux_bridge bridge_mappings "provider:br-ex"
