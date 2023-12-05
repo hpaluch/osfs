@@ -1,16 +1,15 @@
 # OpenStack from Scratch (OSFS)
 
-Here is early stage of script to setup single-node OpenStack
-under Ubuntu 22.04 LTS. My goal is to use simplest Network topology
-called `macvtap` where VM directly attaches to select Bridge (in my case `br-ex`).
+Here Working (!) script to setup single-node OpenStack
+under Ubuntu 22.04 LTS. It uses simples network topology
+with `linuxbridge` Neutron agent - with setup that resembles Proxmox
+(Bridge `br-ex` hosts both real `eth0` interface to Internet and virtual
+VMs interfaces)
 
 Why not using DevStack? DevStack install everything from source which is not
 typical setup (that is suitable for development of OpenStack, but how many
 users do that?). And it is currently too sophisticated to be easy to
 understand.
-
-Basically I plan to replicate steps shown on my (unfinished!) wiki page:
-- https://github.com/hpaluch/hpaluch.github.io/wiki/OpenStack-from-Scratch
 
 # Status
 
@@ -18,10 +17,8 @@ Please ignore `macvtap` version (now under `macvtap-fail/` folder). It seems
 that `macvtap` agent always use VLANs, which is not my setup.
 
 
-I have nice success with `linuxbridge` version under [linuxbridge/](linuxbridge/) folder.
-For the first time it works, however you need to apply
-at least this patch: [linuxbridge/patches/manual-bridge.patch](linuxbridge/patches/manual-bridge.patch)
-to force Nova compute to use existing bridge.
+I have finally (!) success with `linuxbridge` version under [linuxbridge/](linuxbridge/) folder.
+Please read [linuxbridge/README.md](linuxbridge/README.md).
 
 # Requirements
 
@@ -42,7 +39,6 @@ few recommended:
 ```
 Outdated - need to refresh
 ```
-
 
 # Debugging tips
 

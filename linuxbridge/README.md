@@ -1,5 +1,27 @@
-Attempt to configure OpenStack
-with LinuxBridge.
+# It Works! Configure OpenStack with LinuxBridge
+
+Here is most simple setup where OpenStack uses existing bridge (in my
+case `br-ex`) for both VMs and infrastructure ("Proxmox like" setup).
+
+- before setup you have to evaluate and apply these files
+- `etc/netplan/99-openstack.yaml`
+  - replace your `/etc/netplan` with this file, customize it and use `netplan generate && netplan apply`
+  - WARNING! `netplan apply` will likely kill you network connection!
+- also review and apply:
+  - `etc/hosts`
+  - `etc/hostname`
+  - example how to stop renaming interfaces (keep `eth0`): `etc/default/grub`
+
+When your PC works properly you can run
+
+- review script `setup_openstack_lbr.sh`
+- you will likely need to customize command `network create ...` at the end of
+  script to fit your network
+- finally run `./setup_openstack_lbr.sh` in this directory.
+- and follow instructions how to create 1st VM
+
+
+# Resources
 
 Based guide:
 - https://docs.openstack.org/neutron/latest/admin/deploy-lb-provider.html
@@ -9,7 +31,7 @@ We have one special interface
    routable network interface
 
 
-now I have assigned manual bridge
+Now I have assigned manual bridge
 - https://blueprints.launchpad.net/neutron/+spec/phy-net-bridge-mapping
 - https://review.opendev.org/c/openstack/neutron/+/224357
 
@@ -53,7 +75,7 @@ openstack server list
 +--------------------------------------+------+--------+-------------------------+--------+---------+
 ```
 
-# Problems
+# (Solved) Problems
 
 Was fighting with firewall. So I switched it off using:
 ```ini
@@ -62,6 +84,8 @@ Was fighting with firewall. So I switched it off using:
 enable_security_group = False
 enable_ipset = False
 ```
+
+NOTE: Applied in script `setup_openstack_lbr.sh) - you don't need it to do it manually.
 
 If you insists on having firewall I recommend following Logging patch to see (with `dmesg`) which
 packets were dropped:

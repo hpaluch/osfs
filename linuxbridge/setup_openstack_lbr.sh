@@ -835,12 +835,29 @@ echo "Ensure that on list below the 'State' column has value 'Up'"
 )
 
 cat <<EOF
-VM can be created with commands like:
+
+WARNING: Before running first VM you have to apply Nova patch:
+
+  sudo bash
+  cd /
+  patch -p0 < PATH_TO/osfs/linuxbridge/patches/manual-bridge.patch 
+  # and restart Nova compute
+  systemctl restart nova-compute
+
+Otherwise Nova will fire up new not-connected bridge and VM will fail to work.
+
+Once finished VM can be created with commands like:
 
 # do not taint main bash environment:
 bash
 source $CFG_BASE/keystonerc_admin
 openstack server create --flavor m1.tiny --image cirros --nic net-id=provider1 vm1
+# then poll until server is ACTIVE
+openstack server list
+# to see boot messages use:
+console log show vm1
+# to connect to console use:
+console url show vm1
 # exit OpenStack environment when done:
 exit
 
