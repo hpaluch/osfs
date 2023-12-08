@@ -30,7 +30,6 @@ We have one special interface
 - Bridge `br-ex` where is mapped `eth0` with static IP 192.168.0.11 and Gateway 192.168.0.1 - main
    routable network interface
 
-
 Now I have assigned manual bridge
 - https://blueprints.launchpad.net/neutron/+spec/phy-net-bridge-mapping
 - https://review.opendev.org/c/openstack/neutron/+/224357

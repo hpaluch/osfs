@@ -170,9 +170,21 @@ EOF
 
 STAGE=$CFG_STAGE_DIR/005secure-mysql
 [ -f $STAGE ] || {
-	echo "Answer no to socket and note MySQL root password you set"
-	sudo mysql_secure_installation
-	echo "Now store MySQL root password to $MYSQL_ROOT_PWD_FILE"
+	[ -r $MYSQL_ROOT_PWD_FILE ] || {
+		openssl rand -hex 10 > $MYSQL_ROOT_PWD_FILE
+		echo "MySQL root password saved into $MYSQL_ROOT_PWD_FILE"
+	}
+	p=`cat $MYSQL_ROOT_PWD_FILE`
+	# Questions are:
+	# 1. Enter current password for root  (\n)
+	# 2. Switch to unix_socket authentication  (n\n)
+	# 3. Change the root password (\n) # = Yes
+	# 4. Enter Mysql root password 2 times
+	# 5. Remove anonymous users? (\n) # = Yes
+	# 6. Disallow root login remotely? (\n) # = Yes
+	# 7. Remove test database and access to it? (\n) # = Yes
+	# 8. Reload privilege tables now? (\n) # = Yes
+	echo -e '\nn\n\n'"$p"'\n'"$p"'\n\n\n\n\n' | sudo mysql_secure_installation
 	touch $STAGE
 }
 
