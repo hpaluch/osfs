@@ -9,6 +9,11 @@ set -euo pipefail
 HOST=`hostname -f`
 HOST_IP=`hostname -i`
 
+# change working directory to this script location
+cd $(dirname $0)
+# get full absolute path of this directory (we will later use it to apply Nova Bridge name patch)
+WD=`pwd`
+
 echo "HOST='$HOST' HOST_IP='$HOST_IP'"
 
 ENABLE_TRACE="set -x"
@@ -846,19 +851,29 @@ echo "Ensure that on list below the 'State' column has value 'Up'"
 	openstack hypervisor list
 )
 
+# Allow to use manual bridge name when Nova creates VM
+STAGE=$CFG_STAGE_DIR/102-patch-nova-network
+[ -f $STAGE ] || {
+	PATCH_FILE=$WD/patches/manual-bridge.patch
+	[ -r "$PATCH_FILE" ] || {
+		echo "ERROR: Unable to read patch file '$PATCH_FILE'" >&2
+		exit 1
+	}
+	# 1. patch is dumb because it does not allow absolute path name in patch files for the sake of "security"
+	# 2. sudo is dumb because it does not allow to change working directory with "-D" unless
+	#    specifically permitted in /etc/sudoers
+	# So we have to workaround these 2 stupidities, err!, security measures...
+	( cd / && sudo patch -p0 < $PATCH_FILE )
+	# now restart Nova-compute so the changes will have effect
+	sudo systemctl restart nova-compute
+	echo "Nova Bridge PATCH applied successfully."
+	touch $STAGE
+}
+
 cat <<EOF
+OK: SETUP FINISHED!
 
-WARNING: Before running first VM you have to apply Nova patch:
-
-  sudo bash
-  cd /
-  patch -p0 < PATH_TO/osfs/linuxbridge/patches/manual-bridge.patch 
-  # and restart Nova compute
-  systemctl restart nova-compute
-
-Otherwise Nova will fire up new not-connected bridge and VM will fail to work.
-
-Once finished VM can be created with commands like:
+Now you can create your fist VM using commands like:
 
 # do not taint main bash environment:
 bash
@@ -873,6 +888,9 @@ console url show vm1
 # exit OpenStack environment when done:
 exit
 
+NOTE: Please be aware that IP addresses reported by openstack are bogus! We rely on
+external (your!) Network DHCP server to assign IP addresses to VMs, but OpenStack is
+not aware of them.
 EOF
 
 exit 0
