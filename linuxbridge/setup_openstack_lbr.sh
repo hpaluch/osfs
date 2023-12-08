@@ -6,6 +6,13 @@
 
 set -euo pipefail
 
+# any non-empty string will enable eatmydata that will skip all fsync() calls favoring speed over "safety"
+ENABLE_EATMYDATA='on'
+# NOTE: Enabling eatmydata will cause harmless (I hope) errors on packages install:
+#   ERROR: ld.so: object 'libeatmydata.so' from LD_PRELOAD cannot be preloaded (cannot open shared object file): ignored.
+
+# feel free to add your favorite packages to this variable:
+EXTRA_PKGS='sysstat strace'
 HOST=`hostname -f`
 HOST_IP=`hostname -i`
 
@@ -14,11 +21,13 @@ cd $(dirname $0)
 # get full absolute path of this directory (we will later use it to apply Nova Bridge name patch)
 WD=`pwd`
 
+APT_CMD="apt-get"
+[ -z "$ENABLE_EATMYDATA" ] || APT_CMD="eatmydata apt-get"
+
 echo "HOST='$HOST' HOST_IP='$HOST_IP'"
 
 ENABLE_TRACE="set -x"
 #ENABLE_TRACE=true
-
 CFG_BASE=$HOME/.config/osfs
 CFG_STAGE_DIR=$CFG_BASE/stages
 CFG_SEC_DIR=$CFG_BASE/secrets
@@ -134,22 +143,30 @@ done
 
 set -x
 
+[ -z "$ENABLE_EATMYDATA" ] || {
+	STAGE=$CFG_STAGE_DIR/001a-eatmydata
+	[ -f $STAGE ] || {
+		sudo apt-get install -y eatmydata
+		touch $STAGE
+	}
+}
+
 STAGE=$CFG_STAGE_DIR/001basepkg
 [ -f $STAGE ] || {
-	sudo apt-get install -y software-properties-common eatmydata curl wget jq netcat-openbsd openssl crudini
+	sudo $APT_CMD install -y software-properties-common curl wget jq netcat-openbsd openssl crudini $EXTRA_PKGS
 	touch $STAGE
 }
 
 STAGE=$CFG_STAGE_DIR/002enable-os-repo
 [ -f $STAGE ] || {
 	# we no longer enable OpenStack repo, but rather use Ubuntu's Default (Yoga release?)
-	sudo apt-get install -y python3-openstackclient
+	sudo $APT_CMD install -y python3-openstackclient
 	touch $STAGE
 }
 
 STAGE=$CFG_STAGE_DIR/003install-mysql
 [ -f $STAGE ] || {
-	sudo apt-get install -y mariadb-server python3-pymysql
+	sudo $APT_CMD install -y mariadb-server python3-pymysql
 	touch $STAGE
 }
 
@@ -207,7 +224,7 @@ mysql -u root -p`cat $MYSQL_ROOT_PWD_FILE` -e 'show databases' || {
 
 STAGE=$CFG_STAGE_DIR/010install-memcached
 [ -f $STAGE ] || {
-	sudo apt-get install -y memcached
+	sudo $APT_CMD install -y memcached
 	touch $STAGE
 }
 
@@ -230,7 +247,7 @@ STAGE=$CFG_STAGE_DIR/020keystone-db
 
 STAGE=$CFG_STAGE_DIR/021keystone-pkg
 [ -f $STAGE ] || {
-	sudo apt-get install -y keystone
+	sudo $APT_CMD install -y keystone
 	touch $STAGE
 }
 
@@ -344,7 +361,7 @@ STAGE=$CFG_STAGE_DIR/031glance-svc
 
 STAGE=$CFG_STAGE_DIR/032glance-pkg
 [ -f $STAGE ] || {
-	sudo apt-get install -y glance
+	sudo $APT_CMD install -y glance
 	touch $STAGE
 }
 
@@ -421,7 +438,7 @@ STAGE=$CFG_STAGE_DIR/041placement-svc
 
 STAGE=$CFG_STAGE_DIR/042placement-pkg
 [ -f $STAGE ] || {
-	sudo apt-get install -y placement-api python3-osc-placement
+	sudo $APT_CMD install -y placement-api python3-osc-placement
 	touch $STAGE
 }
 
@@ -467,7 +484,7 @@ wait_for_tcp_port 8778 3 "Placement"
 STAGE=$CFG_STAGE_DIR/050rabbit-pkg
 [ -f $STAGE ] || {
 	# NOTE: eatmydata somehow clashes with erlang setup
-	sudo apt-get install -y rabbitmq-server
+	sudo $APT_CMD install -y rabbitmq-server
 	touch $STAGE
 }
 
@@ -530,7 +547,7 @@ STAGE=$CFG_STAGE_DIR/063nova-svc
 
 STAGE=$CFG_STAGE_DIR/064neutron-pkg
 [ -f $STAGE ] || {
-	sudo apt-get install -y neutron-server neutron-plugin-ml2 \
+	sudo $APT_CMD install -y neutron-server neutron-plugin-ml2 \
        		python3-neutronclient neutron-linuxbridge-agent
 	# Disable and stop all services until they are properly configured to avoid eating CPU, etc...
 	sudo systemctl disable --now neutron-linuxbridge-cleanup.service \
@@ -542,7 +559,7 @@ STAGE=$CFG_STAGE_DIR/064neutron-pkg
 
 STAGE=$CFG_STAGE_DIR/065nova-pkg
 [ -f $STAGE ] || {
-	sudo apt-get install -y nova-api nova-conductor nova-novncproxy nova-scheduler
+	sudo $APT_CMD install -y nova-api nova-conductor nova-novncproxy nova-scheduler
 	# Disable and stop all services until they are properly configured to avoid eating CPU, etc...
 	# Except qemu-kvm.service
 	sudo systemctl disable --now nova-conductor.service nova-api.service \
@@ -783,7 +800,7 @@ STAGE=$CFG_STAGE_DIR/081-create-subnet
 
 STAGE=$CFG_STAGE_DIR/090nova-compute-pkg
 [ -f $STAGE ] || {
-	sudo apt-get install -y nova-compute
+	sudo $APT_CMD install -y nova-compute
 	sudo systemctl disable --now nova-compute.service
 	# remove log - we did not configured Nova yet
 	sudo rm -f /var/log/nova/nova-compute.log
