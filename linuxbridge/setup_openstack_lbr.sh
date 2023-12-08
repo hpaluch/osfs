@@ -6,7 +6,7 @@
 
 set -euo pipefail
 
-HOST=`hostname`
+HOST=`hostname -f`
 HOST_IP=`hostname -i`
 
 echo "HOST='$HOST' HOST_IP='$HOST_IP'"
