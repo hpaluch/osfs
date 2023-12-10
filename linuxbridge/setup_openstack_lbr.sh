@@ -185,6 +185,8 @@ character-set-server = utf8
 innodb_buffer_pool_size = 256m
 # see: https://mariadb.com/docs/reference/es/system-variables/innodb_flush_log_at_trx_commit/
 innodb_flush_log_at_trx_commit = 0
+# NEVER USE nosync IN PRODUCTION!
+innodb_flush_method = nosync
 EOF
 	sudo systemctl restart mariadb
 	touch $STAGE
@@ -909,5 +911,7 @@ NOTE: Please be aware that IP addresses reported by openstack are bogus! We rely
 external (your!) Network DHCP server to assign IP addresses to VMs, but OpenStack is
 not aware of them.
 EOF
+
+sync
 
 exit 0
