@@ -724,8 +724,6 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	touch $STAGE
 }
 
-exit 123
-
 STAGE=$CFG_STAGE_DIR/067-nova-syncd
 [ -f $STAGE ] || {
 	sudo -u nova nova-manage api_db sync
@@ -890,7 +888,8 @@ echo "Ensure that on list below the 'State' column has value 'Up'"
 
 # Allow to use manual bridge name when Nova creates VM
 STAGE=$CFG_STAGE_DIR/102-patch-nova-network
-[ -f $STAGE ] || {
+# temporarily disabled
+[ ! -f $STAGE ] || {
 	PATCH_FILE=$WD/patches/manual-bridge.patch
 	[ -r "$PATCH_FILE" ] || {
 		echo "ERROR: Unable to read patch file '$PATCH_FILE'" >&2
@@ -924,10 +923,6 @@ console log show vm1
 console url show vm1
 # exit OpenStack environment when done:
 exit
-
-NOTE: Please be aware that IP addresses reported by openstack are bogus! We rely on
-external (your!) Network DHCP server to assign IP addresses to VMs, but OpenStack is
-not aware of them.
 EOF
 
 exit 0
