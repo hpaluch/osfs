@@ -643,7 +643,14 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 	touch $STAGE
 }
 
-exit 123
+STAGE=$CFG_STAGE_DIR/067-iptables-legacy-api
+[ -f $STAGE ] || {
+	sudo /usr/bin/update-alternatives --set iptables /usr/sbin/iptables-nft
+	sudo /usr/bin/update-alternatives --set ip6tables /usr/sbin/ip6tables-nft
+	sudo /usr/bin/update-alternatives --set ebtables /usr/sbin/ebtables-nft
+	sudo /usr/bin/update-alternatives --set arptables /usr/sbin/arptables-nft
+	touch $STAGE
+}
 
 # configuration from https://docs.openstack.org/neutron/latest/install/controller-install-option1-ubuntu.html
 STAGE=$CFG_STAGE_DIR/068-neutron-cfg
@@ -661,6 +668,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f DEFAULT auth_strategy keystone
 	sudo crudini --set $f DEFAULT notify_nova_on_port_status_changes true
 	sudo crudini --set $f DEFAULT notify_nova_on_port_data_changes true
+	sudo crudini --set $f DEFAULT dhcp_agents_per_network 1
 
 	sudo crudini --set $f keystone_authtoken www_authenticate_uri "http://$HOST:5000"
 	sudo crudini --set $f keystone_authtoken auth_url "http://$HOST:5000"
@@ -698,18 +706,25 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	f=/etc/neutron/plugins/ml2/linuxbridge_agent.ini
 	# see: https://blueprints.launchpad.net/neutron/+spec/phy-net-bridge-mapping
 	# see: https://specs.openstack.org/openstack/neutron-specs/specs/liberty/phy-net-bridge-mapping.html
-	sudo crudini --set $f linux_bridge bridge_mappings "provider:br-ex"
+	sudo crudini --set $f linux_bridge bridge_mappings "provider:eth1"
 	sudo crudini --set $f vxlan enable_vxlan False
 	sudo crudini --set $f securitygroup firewall_driver iptables
-	sudo crudini --set $f securitygroup enable_security_group False
+	sudo crudini --set $f securitygroup enable_security_group True
 
-	# we don't plan to use DHCP but just following docs
+	# Neutron DHCP Agent
 	f=/etc/neutron/plugins/ml2/dhcp_agent.ini
 	sudo crudini --set $f DEFAULT interface_driver linuxbridge
 	sudo crudini --set $f DEFAULT enable_isolated_metadata True
+	sudo crudini --set $f DEFAULT force_metadata True
 
+	# Neutron Metadata Agent
+	f=/etc/neutron/plugins/ml2/metadata_agent.ini
+	sudo crudini --set $f DEFAULT nova_metadata_host "$HOST_IP"
+	sudo crudini --set $f DEFAULT metadata_proxy_shared_secret $METADATA_SECRET
 	touch $STAGE
 }
+
+exit 123
 
 STAGE=$CFG_STAGE_DIR/067-nova-syncd
 [ -f $STAGE ] || {
@@ -791,10 +806,11 @@ STAGE=$CFG_STAGE_DIR/081-create-subnet
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
 	# from: https://docs.openstack.org/install-guide/launch-instance-networks-provider.html
+	# matches eth1 - provider network
 	openstack subnet create --network provider1 \
-	  --allocation-pool start=192.168.0.150,end=192.168.0.200 \
-	  --dns-nameserver 1.1.1.1 --gateway 192.168.0.1 \
-	  --subnet-range 192.168.0.0/24 provider1-v4
+	  --allocation-pool start=192.168.124.10,end=192.168.124.200 \
+	  --dns-nameserver 192.168.124.1 --gateway 192.168.124.1 \
+	  --subnet-range 192.168.124.0/24 provider1-v4
 	)
 	touch $STAGE
 }
