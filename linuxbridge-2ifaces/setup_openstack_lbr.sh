@@ -669,6 +669,9 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f DEFAULT notify_nova_on_port_status_changes true
 	sudo crudini --set $f DEFAULT notify_nova_on_port_data_changes true
 	sudo crudini --set $f DEFAULT dhcp_agents_per_network 1
+	# new feature in Ubuntu 24.04 LTS
+	# see https://docs.openstack.org/neutron/zed/admin/config-experimental-framework.html
+	sudo crudini --set $f experimental linuxbridge true
 
 	sudo crudini --set $f keystone_authtoken www_authenticate_uri "http://$HOST:5000"
 	sudo crudini --set $f keystone_authtoken auth_url "http://$HOST:5000"
@@ -786,6 +789,14 @@ STAGE=$CFG_STAGE_DIR/070-neutron-linuxbridge
 [ -f $STAGE ] || {
 	sudo systemctl enable --now neutron-linuxbridge-cleanup.service neutron-linuxbridge-agent.service
 	# FIXME: Know no way how to detect if service is running properly
+	touch $STAGE
+}
+
+STAGE=$CFG_STAGE_DIR/070b-neutron-agents-enable
+[ -f $STAGE ] || {
+	# re-enable
+	sudo systemctl enable --now \
+		neutron-dhcp-agent.service neutron-metadata-agent.service
 	touch $STAGE
 }
 
