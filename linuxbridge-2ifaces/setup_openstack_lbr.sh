@@ -715,13 +715,13 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f securitygroup enable_security_group True
 
 	# Neutron DHCP Agent
-	f=/etc/neutron/plugins/ml2/dhcp_agent.ini
+	f=/etc/neutron/dhcp_agent.ini
 	sudo crudini --set $f DEFAULT interface_driver linuxbridge
 	sudo crudini --set $f DEFAULT enable_isolated_metadata True
 	sudo crudini --set $f DEFAULT force_metadata True
 
 	# Neutron Metadata Agent
-	f=/etc/neutron/plugins/ml2/metadata_agent.ini
+	f=/etc/neutron/metadata_agent.ini
 	sudo crudini --set $f DEFAULT nova_metadata_host "$HOST_IP"
 	sudo crudini --set $f DEFAULT metadata_proxy_shared_secret $METADATA_SECRET
 	touch $STAGE
