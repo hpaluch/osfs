@@ -554,7 +554,7 @@ STAGE=$CFG_STAGE_DIR/064neutron-pkg
 	# Disable and stop all services until they are properly configured to avoid eating CPU, etc...
 	sudo systemctl disable --now neutron-linuxbridge-cleanup.service \
 		neutron-linuxbridge-agent.service neutron-server.service \
-		openstack-neutron-dhcp-agent.service openstack-neutron-metadata-agent.service
+		neutron-dhcp-agent.service neutron-metadata-agent.service
 	# remove clutter of errors because services are not configured yet
 	sudo find /var/log/neutron/ -name '*.log' -a -delete
 	touch $STAGE
