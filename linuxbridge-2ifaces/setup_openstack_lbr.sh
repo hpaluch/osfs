@@ -837,6 +837,14 @@ STAGE=$CFG_STAGE_DIR/090nova-compute-pkg
 	touch $STAGE
 }
 
+STAGE=$CFG_STAGE_DIR/090bnova-disable-default-net
+[ -f $STAGE ] || {
+	# https://docs.openstack.org/neutron/2024.2/admin/misc-libvirt.html
+	sudo virsh net-destroy default # means "stop"
+	sudo virsh net-autostart --network default --disable
+	touch $STAGE
+}
+
 STAGE=$CFG_STAGE_DIR/091nova-compute-cfg
 [ -f $STAGE ] || {
 	svc=nova
@@ -897,26 +905,6 @@ echo "Ensure that on list below the 'State' column has value 'Up'"
 ( source $CFG_BASE/keystonerc_admin
 	openstack hypervisor list
 )
-
-# Allow to use manual bridge name when Nova creates VM
-STAGE=$CFG_STAGE_DIR/102-patch-nova-network
-# temporarily disabled
-[ ! -f $STAGE ] || {
-	PATCH_FILE=$WD/patches/manual-bridge.patch
-	[ -r "$PATCH_FILE" ] || {
-		echo "ERROR: Unable to read patch file '$PATCH_FILE'" >&2
-		exit 1
-	}
-	# 1. patch is dumb because it does not allow absolute path name in patch files for the sake of "security"
-	# 2. sudo is dumb because it does not allow to change working directory with "-D" unless
-	#    specifically permitted in /etc/sudoers
-	# So we have to workaround these 2 stupidities, err!, security measures...
-	( cd / && sudo patch -p0 < $PATCH_FILE )
-	# now restart Nova-compute so the changes will have effect
-	sudo systemctl restart nova-compute
-	echo "Nova Bridge PATCH applied successfully."
-	touch $STAGE
-}
 
 cat <<EOF
 OK: SETUP FINISHED!
