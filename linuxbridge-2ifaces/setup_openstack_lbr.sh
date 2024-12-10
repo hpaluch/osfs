@@ -709,7 +709,8 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	f=/etc/neutron/plugins/ml2/linuxbridge_agent.ini
 	# see: https://blueprints.launchpad.net/neutron/+spec/phy-net-bridge-mapping
 	# see: https://specs.openstack.org/openstack/neutron-specs/specs/liberty/phy-net-bridge-mapping.html
-	sudo crudini --set $f linux_bridge bridge_mappings "provider:eth1"
+	# see: https://docs.openstack.org/neutron/2024.2/admin/deploy-lb-provider.html
+	sudo crudini --set $f linux_bridge physical_interface_mappings "provider:eth1"
 	sudo crudini --set $f vxlan enable_vxlan False
 	sudo crudini --set $f securitygroup firewall_driver iptables
 	sudo crudini --set $f securitygroup enable_security_group True
