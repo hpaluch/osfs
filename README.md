@@ -1,43 +1,44 @@
 # OpenStack from Scratch (OSFS)
 
-Here is Working (!) script to setup single-node OpenStack
-under Ubuntu 22.04 LTS. It uses simples network topology
-with `linuxbridge` Neutron agent - with setup that resembles Proxmox
-(Bridge `br-ex` hosts both real `eth0` interface to Internet and virtual
-VMs interfaces - note that VMs depends on external (your) DHCP server).
+Here are Working (!) 2 script variants how to setup single-node OpenStack
+under Ubuntu LTS.
 
-Why not using DevStack?
-
-1. DevStack install itself from source which is not typical setup (it
-   is suitable for OpenStack developers, but not for mere users)
-2. In case of failure, the `stack.sh` script is unable to resume - you have to
-   start from scratch. It is precarious because most difficult (and most likely to fail) setup is Neutron
-   (networking layer) that runs practically at the and of setup.
-3. DevStack setup is too sophisticated (by default it uses OVS + OVN which is most
-   complicated setup available under Linux ever)
-4. I was unable to setup it properly with plain LinuxBridge and/or
-   plain Macvtap (suspecting that documentation is outdated in that case).
+> Why not using DevStack?
+> 
+> 1. DevStack install itself from source which is not typical setup (it
+>    is suitable for OpenStack developers, but not for mere users)
+> 2. In case of failure, the `stack.sh` script is unable to resume - you have to
+>    start from scratch. It is precarious because most difficult (and most likely to fail) setup is Neutron
+>    (networking layer) that runs practically at the and of setup.
+> 3. DevStack setup is too sophisticated (by default it uses OVS + OVN which is most
+>    complicated setup available under Linux ever)
+> 4. I was unable to setup it properly with plain LinuxBridge and/or
+>    plain Macvtap (suspecting that documentation is outdated in that case).
 
 # Status
 
-I have finally (!) success with `linuxbridge` version under [linuxbridge/](linuxbridge/) folder.
-Please read [linuxbridge/README.md](linuxbridge/README.md).
+> WARNING! OpenStack Zed suddenly declared LinuxBridge as "experimental" (actually meaning "unsupported").
+> See https://docs.openstack.org/neutron/zed/admin/config-experimental-framework.html So far, it works.
+
+> WARNING! No Horizon (Web UI) yet. It requires self-service network support which is intentionally not
+> supported here (due complexity).
+
+There are now 2 variants:
+
+1. DEPRECATED: single interface with LinuxBridge - requires lot of trickery to make it work.
+   You can find this version under [linuxbridge/](linuxbridge/) - tested under Ubuntu 22 LTS. Issues:
+   it requires firewall and Nova patches and causes assigned IP addresses mismatches
+
+2. RECOMMENDED: 2 network interfaces (Management and Provider) with LinuxBridge - it is only minimal
+   configuration officially
+   supported by OpenStack - because Provider network rules generally clash with Management network,
+   therefore 2 interfaces are required. You can find this recommended version
+   under [linuxbridge-2ifaces/](linuxbridge-2ifaces/). This version fully support embedded DHCP server
+   and metadata agent (metadata not tested though). Tested under Ubuntu 24.04.1 LTS
 
 > Please ignore `macvtap` version (now under `macvtap-fail/` folder). It seems
 > that `macvtap` agent always use VLANs, which is no use in my trivial environment with simple
 > home router.
-
-# Requirements
-
-* Ubuntu 22.04 LTS (it is only OS where OpenStack is actively developed)
-* Setup bridge and dummy interface - see files under `linuxbridge/etc`,
-  especially  `linuxbridge/etc/netplan/99-openstack.yaml`, but also ensure
-  that you have proper (reachable) Hostname and FQDN.
-
-When done go to [linuxbridge/](linuxbridge/) folder and again read its `README.md` and
-when ready run its `./setup_openstack_lbr.sh`.
-
-If script finishes successfully it will tell you how to spin and connect to your first VM.
 
 # Debugging tips
 
