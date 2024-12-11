@@ -16,6 +16,7 @@ ENABLE_EATMYDATA=''
 EXTRA_PKGS='sysstat strace'
 HOST=`hostname -f`
 HOST_IP=`hostname -i`
+OVERLAY_INTERFACE_IP_ADDRESS=10.99.99.11
 METADATA_SECRET=Secret123
 
 # change working directory to this script location
@@ -551,11 +552,12 @@ STAGE=$CFG_STAGE_DIR/064neutron-pkg
 [ -f $STAGE ] || {
 	sudo $APT_CMD install -y neutron-server neutron-plugin-ml2 \
        		python3-neutronclient neutron-openvswitch-agent \
-		neutron-metadata-agent neutron-dhcp-agent
+		neutron-metadata-agent neutron-dhcp-agent neutron-l3-agent
 	# Disable and stop all services until they are properly configured to avoid eating CPU, etc...
 	sudo systemctl disable --now neutron-openvswitch-agent.service \
 		neutron-ovs-cleanup.service neutron-server.service \
-		neutron-dhcp-agent.service neutron-metadata-agent.service
+		neutron-dhcp-agent.service neutron-metadata-agent.service \
+		neutron-l3-agent.service
 	# remove clutter of errors because services are not configured yet
 	sudo find /var/log/neutron/ -name '*.log' -a -delete
 	touch $STAGE
@@ -654,8 +656,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	sudo crudini --set $f database connection "mysql+pymysql://$svc:$p@$HOST/neutron"
 	sudo crudini --set $f DEFAULT core_plugin ml2
-	# service_plugins should be empty
-	sudo crudini --set $f DEFAULT service_plugins ''
+	sudo crudini --set $f DEFAULT service_plugins router
 	sudo crudini --set $f DEFAULT transport_url "rabbit://openstack:$rp@$HOST:5672/"
 	sudo crudini --set $f DEFAULT auth_strategy keystone
 	sudo crudini --set $f DEFAULT notify_nova_on_port_status_changes true
@@ -683,26 +684,36 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	sudo crudini --set $f oslo_concurrency lock_path /var/lib/neutron/tmp
 
-	# https://docs.openstack.org/neutron/latest/admin/deploy-lb-provider.html
+	# https://docs.openstack.org/neutron/2024.1/install/controller-install-option2-ubuntu.html
 	f=/etc/neutron/plugins/ml2/ml2_conf.ini
-	sudo crudini --set $f ml2 type_drivers flat,vlan
-	sudo crudini --set $f ml2 tenant_network_types ''
-	sudo crudini --set $f ml2 mechanism_drivers openvswitch
+	sudo crudini --set $f ml2 type_drivers flat,vlan,vxlan
+	sudo crudini --set $f ml2 tenant_network_types vxlan
+	sudo crudini --set $f ml2 mechanism_drivers "openvswitch,l2population"
 	sudo crudini --set $f ml2 extension_drivers port_security
 	sudo crudini --set $f ml2_type_flat flat_networks provider
+	sudo crudini --set $f ml2_type_vxlan vni_ranges "1:1000"
 
 	# Agent part (Compute)
 	f=/etc/neutron/plugins/ml2/openvswitch_agent.ini
-	# see https://docs.openstack.org/neutron/2024.1/admin/deploy-ovs-provider.html
-	# see https://docs.openstack.org/neutron/2024.1/install/compute-install-option1-ubuntu.html
+	# see https://docs.openstack.org/neutron/2024.1/admin/deploy-ovs-selfservice.html
+	# see https://docs.openstack.org/neutron/2024.1/install/controller-install-option2-ubuntu.html
 	sudo crudini --set $f ovs bridge_mappings 'provider:br-provider'
 	sudo crudini --set $f ovs securitygroup firewall_driver openvswitch
+	sudo crudini --set $f ovs securitygroup enable_security_group true
+	sudo crudini --set $f ovs local_ip $OVERLAY_INTERFACE_IP_ADDRESS
+	sudo crudini --set $f agent tunnel_types vxlan
+	sudo crudini --set $f agent l2_population true
+	
+	# Neutron L3 Agent
+	f=/etc/neutron/l3_agent.ini
+	sudo crudini --set $f DEFAULT interface_driver openvswitch
 
 	# Neutron DHCP Agent
 	f=/etc/neutron/dhcp_agent.ini
 	sudo crudini --set $f DEFAULT interface_driver openvswitch
 	sudo crudini --set $f DEFAULT enable_isolated_metadata True
-	sudo crudini --set $f DEFAULT force_metadata True
+	#sudo crudini --set $f DEFAULT force_metadata True
+	sudo crudini --set $f DEFAULT dhcp_driver neutron.agent.linux.dhcp.Dnsmasq
 
 	# Neutron Metadata Agent
 	f=/etc/neutron/metadata_agent.ini
@@ -787,7 +798,8 @@ STAGE=$CFG_STAGE_DIR/070b-neutron-agents-enable
 [ -f $STAGE ] || {
 	# re-enable
 	sudo systemctl enable --now \
-		neutron-dhcp-agent.service neutron-metadata-agent.service
+		neutron-dhcp-agent.service neutron-metadata-agent.service \
+		neutron-l3-agent.service
 	touch $STAGE
 }
 
@@ -813,6 +825,23 @@ STAGE=$CFG_STAGE_DIR/081-create-subnet
 	)
 	touch $STAGE
 }
+
+# Network self-service part
+STAGE=$CFG_STAGE_DIR/082-self-service
+[ -f $STAGE ] || {
+	( source $CFG_BASE/keystonerc_admin
+	# https://docs.openstack.org/neutron/2024.1/admin/deploy-ovs-selfservice.html
+	openstack network set --external provider1
+	openstack network create selfservice1
+	openstack subnet create --subnet-range 10.10.10.0/24 \
+	  --network selfservice1 --dns-nameserver 192.168.124.1 selfservice1-v4
+	openstack router create router1
+	openstack router add subnet router1 selfservice1-v4
+	openstack router set --external-gateway provider1 router1
+	touch $STAGE
+}
+
+
 
 # Setting Nova Compute
 # https://docs.openstack.org/nova/2023.2/install/compute-install-ubuntu.html
@@ -904,12 +933,15 @@ Now you can create your fist VM using commands like:
 bash
 source $CFG_BASE/keystonerc_admin
 openstack server create --flavor m1.tiny --image cirros --nic net-id=provider1 vm1
+# add floating IP (on provider network)
+openstack floating ip create provider1
+openstack server add floating ip vm1 PUT_IP_VALUE_HERE
 # then poll until server is ACTIVE
 openstack server list
 # to see boot messages use:
-console log show vm1
+openstack console log show vm1
 # to connect to console use:
-console url show vm1
+openstack console url show vm1
 # exit OpenStack environment when done:
 exit
 EOF
