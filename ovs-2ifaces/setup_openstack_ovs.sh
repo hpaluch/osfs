@@ -699,8 +699,8 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f ovs securitygroup firewall_driver openvswitch
 
 	# we don't plan to use DHCP but just following docs
-	f=/etc/neutron/plugins/ml2/dhcp_agent.ini
-	sudo crudini --set $f DEFAULT interface_driver linuxbridge
+	f=/etc/neutron/dhcp_agent.ini
+	sudo crudini --set $f DEFAULT interface_driver openvswitch
 	sudo crudini --set $f DEFAULT enable_isolated_metadata True
 	sudo crudini --set $f DEFAULT force_metadata True
 
@@ -717,8 +717,6 @@ STAGE=$CFG_STAGE_DIR/068-neutron-ovs-br
 	sudo ovs-vsctl add-port br-provider eth1
 	touch $STAGE
 }
-
-exit 123
 
 STAGE=$CFG_STAGE_DIR/067-nova-syncd
 [ -f $STAGE ] || {
