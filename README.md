@@ -1,43 +1,40 @@
 # OpenStack from Scratch (OSFS)
 
-Here are Working (!) 2 script variants how to setup single-node OpenStack
-under Ubuntu LTS.
+> Project summary: setup OpenStack with single (easy to understand) bash script.
 
-> Why not using DevStack?
-> 
-> 1. DevStack install itself from source which is not typical setup (it
->    is suitable for OpenStack developers, but not for mere users)
-> 2. In case of failure, the `stack.sh` script is unable to resume - you have to
->    start from scratch. It is precarious because most difficult (and most likely to fail) setup is Neutron
->    (networking layer) that runs practically at the and of setup.
-> 3. DevStack setup is too sophisticated (by default it uses OVS + OVN which is most
->    complicated setup available under Linux ever)
-> 4. I was unable to setup it properly with plain LinuxBridge and/or
->    plain Macvtap (suspecting that documentation is outdated in that case).
+Here are 3 variants how to setup single-node OpenStack
+under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
 
 # Status
 
 > WARNING! OpenStack Zed suddenly declared LinuxBridge as "experimental" (actually meaning "unsupported").
 > See https://docs.openstack.org/neutron/zed/admin/config-experimental-framework.html So far, it works.
 
-> WARNING! No Horizon (Web UI) yet. It requires self-service network support which is intentionally not
-> supported here (due complexity).
+> WARNING! No Horizon (Web UI) yet. It requires self-service network support which is not
+> supported here yet (due complexity). I plan to add such variant later...
 
-There are now 2 variants:
+There are now these variants (all support "provider" network only, no self-service):
 
 1. DEPRECATED: single interface with LinuxBridge - requires lot of trickery to make it work.
    You can find this version under [linuxbridge/](linuxbridge/) - tested under Ubuntu 22 LTS. Issues:
    it requires firewall and Nova patches and causes assigned IP addresses mismatches
 
-2. RECOMMENDED: 2 network interfaces (Management and Provider) with LinuxBridge - it is only minimal
-   configuration officially
-   supported by OpenStack - because Provider network rules generally clash with Management network,
-   therefore 2 interfaces are required. You can find this recommended version
-   under [linuxbridge-2ifaces/](linuxbridge-2ifaces/). This version fully support embedded DHCP server
-   and metadata agent (metadata not tested though). Tested under Ubuntu 24.04.1 LTS
+2. DEPRECATED yet usable: 2 network interfaces (Management and Provider) with LinuxBridge
+   under [linuxbridge-2ifaces/](linuxbridge-2ifaces/). This version includes embedded DHCP server
+   and metadata agent (metadata not tested though). Tested under Ubuntu 24.04.1 LTS.
+
+   Problem: LinuxBridge is flagged "experimental" (meaning: not supported) since OpenStack Zed. However
+   it still works in Ubuntu 24.04.1 LTS
+
+3. RECOMMENDED: 2 network interfaces (Management and Provider) with Open vSwitch (OVS)
+   under [ovs-2ifaces/](ovs-2ifaces/). This version includes embedded DHCP server
+   and metadata agent (metadata not tested though). Tested under Ubuntu 24.04.1 LTS.
+   Since OpenStack Zed, OVS bridge is only supported bridge in OpenStack deployments (where
+   LinuxBridge is "deprecated" and "macvtap" abandoned)
+
 
 > Please ignore `macvtap` version (now under `macvtap-fail/` folder). It seems
-> that `macvtap` agent always use VLANs, which is no use in my trivial environment with simple
+> that `macvtap` agent always use VLANs, which is no way in my trivial environment with simple
 > home router.
 
 # Debugging tips
@@ -66,3 +63,14 @@ rm /var/log/neutron/neutron-server.log
 systemctl start neutron-server
 ```
 
+# Why not using DevStack?
+
+1. DevStack install itself from source which is not typical setup (it
+   is suitable for OpenStack developers, but not for mere users)
+2. In case of failure, the `stack.sh` script is unable to resume - you have to
+   start from scratch. It is precarious because most difficult (and most likely to fail) setup is Neutron
+   (networking layer) that runs practically at the and of setup.
+3. DevStack setup is too sophisticated (by default it uses OVS + OVN which is most
+   complicated setup available under Linux ever)
+4. I was unable to setup it properly with plain LinuxBridge and/or
+   plain Macvtap (suspecting that documentation is outdated in that case).
