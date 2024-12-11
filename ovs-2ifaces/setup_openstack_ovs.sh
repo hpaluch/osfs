@@ -698,7 +698,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f ovs bridge_mappings 'provider:br-provider'
 	sudo crudini --set $f ovs securitygroup firewall_driver openvswitch
 
-	# we don't plan to use DHCP but just following docs
+	# Neutron DHCP Agent
 	f=/etc/neutron/dhcp_agent.ini
 	sudo crudini --set $f DEFAULT interface_driver openvswitch
 	sudo crudini --set $f DEFAULT enable_isolated_metadata True
