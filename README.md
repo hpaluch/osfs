@@ -43,13 +43,12 @@ Setup variants with "provider" (public) network only:
 Setup variants with both "provider" (public) and "self-service" (private tenant) networks (typical
 OpenStack setup):
 
-4. RECOMMENDED: 3 network interfaces (Management, Provider, overlay) with Open
+4. RECOMMENDED: 2 network interfaces (Management, Provider) with Open
    vSwitch (OVS) under [ovs-full/](ovs-full/) with self-service network. This
    version includes embedded DHCP server and metadata agent (metadata not tested
    though). Tested under Ubuntu 24.04.1 LTS.  This is most common setup where each
    tenant has its "self-service" network and uses floating IP address to make VMs
    reachable from outside.
-
 
 OVN Notes: I have no OVS+OVN variant (currently pushed by DevStack) because
 - official docs mention TripleO that was killed (and crippled repositories) in Feb 2023:

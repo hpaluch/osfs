@@ -1,6 +1,6 @@
-# It Works! Configure OpenStack with OVS - 3 interfaces
+# It Works! Configure OpenStack with OVS - 2 interfaces
 
-Here is minimal supported configuration of OpenStack using Open vSwitch (OVS) and 3 network interfaces.
+Here is minimal supported configuration of OpenStack using Open vSwitch (OVS) and 2 network interfaces.
 
 - Tested OS: `Ubuntu 24.04.1 LTS (Noble Numbat)`
 - OpenStack version: output of `dpkg -l neutron-common` is: `2:24.0.0-0ubuntu1`. It should
@@ -13,8 +13,6 @@ You need to have 2 interfaces:
 * `eth1` "public" (also provider) network - 192.168.124.0/24 with access to Internet, however
    it should be just UP but no IP address assigned (OpenStack OVS backend will do that).
    There should be NO running DHCP server on this network (OpenStack will run its own version of DHCP).
-* `eth2` overaly network (I plan to merge it to `eth0`) - here is created tunnel for traffic in Flat
-  self-service network between several nodes.
 
 - before setup you have to evaluate and apply these files
 - `etc/netplan/99-openstack.yaml`
@@ -28,8 +26,6 @@ You need to have 2 interfaces:
 When your PC works properly you can run
 
 - review script `setup_openstack_ovs_full.sh`
-- ensure that you select valid IP address on `eth2` overlay network, hardcoded
-  to `OVERLAY_INTERFACE_IP_ADDRESS=10.99.99.11`
 - you will likely need to customize command `network create ...` at the end of
   script to fit your network
 - finally run `./setup_openstack_ovs_full.sh` in this directory.

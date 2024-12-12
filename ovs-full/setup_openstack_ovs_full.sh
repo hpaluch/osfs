@@ -16,7 +16,7 @@ ENABLE_EATMYDATA=''
 EXTRA_PKGS='sysstat strace'
 HOST=`hostname -f`
 HOST_IP=`hostname -i`
-OVERLAY_INTERFACE_IP_ADDRESS=10.99.99.11
+OVERLAY_INTERFACE_IP_ADDRESS=$HOST_IP
 METADATA_SECRET=Secret123
 
 # change working directory to this script location
