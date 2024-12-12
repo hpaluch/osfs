@@ -838,6 +838,7 @@ STAGE=$CFG_STAGE_DIR/082-self-service
 	openstack router create router1
 	openstack router add subnet router1 selfservice1-v4
 	openstack router set --external-gateway provider1 router1
+	)
 	touch $STAGE
 }
 
@@ -932,16 +933,17 @@ Now you can create your fist VM using commands like:
 # do not taint main bash environment:
 bash
 source $CFG_BASE/keystonerc_admin
-openstack server create --flavor m1.tiny --image cirros --nic net-id=provider1 vm1
+openstack server create --flavor m1.tiny --image cirros --nic net-id=selfservice1 vm1
 # add floating IP (on provider network)
-openstack floating ip create provider1
-openstack server add floating ip vm1 PUT_IP_VALUE_HERE
+IP=\$(openstack floating ip create -f value -c floating_ip_address  provider1)
+echo \$IP
+openstack server add floating ip vm1 \$IP
 # then poll until server is ACTIVE
 openstack server list
 # to see boot messages use:
 openstack console log show vm1
 # to connect to console use:
-openstack console url show vm1
+openstack console url show -f value -c url vm1
 # exit OpenStack environment when done:
 exit
 EOF
