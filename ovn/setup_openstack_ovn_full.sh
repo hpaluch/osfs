@@ -695,22 +695,22 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	# https://docs.openstack.org/neutron/latest/install/ovn/manual_install.html
 	f=/etc/neutron/plugins/ml2/ml2_conf.ini
-	sudo crudini --set $f ml2 type_drivers flat,geneve,vxlan
+	sudo crudini --set $f ml2 type_drivers flat,geneve
 	sudo crudini --set $f ml2 tenant_network_types geneve
-	sudo crudini --set $f ml2 mechanism_drivers ovn
+	sudo crudini --set $f ml2 mechanism_drivers ovn,logger
 	sudo crudini --set $f ml2 extension_drivers port_security
         sudo crudini --set $f ml2 overlay_ip_version 4
 
+        sudo crudini --set $f ml2_type_flat flat_networks provider
+
         sudo crudini --set $f ml2_type_geneve vni_ranges '1:1000'
 	sudo crudini --set $f ml2_type_geneve max_header_size 38
-
-	sudo crudini --set $f ml2_type_vxlan vni_ranges '1001:2000'
 
 	sudo crudini --set $f securitygroup enable_security_group true
 
 	sudo crudini --set $f ovn ovn_nb_connection tcp:$HOST_IP:6641
 	sudo crudini --set $f ovn ovn_sb_connection tcp:$HOST_IP:6642
-	sudo crudini --set $f ovn ovn_l3_scheduler chance
+	sudo crudini --set $f ovn ovn_l3_scheduler leastloaded
 	# Metadata
 	sudo crudini --set $f ovn ovn_metadata_enabled True
 	
@@ -719,8 +719,10 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo ovs-vsctl set open . external-ids:ovn-cms-options=enable-chassis-as-gw
 
 	# Compute node
+	sudo ovs-vsctl set open . external-ids:hostname=$HOST
+	sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
 	sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$HOST_IP:6642
-	sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+	sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
 	sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$HOST_IP
 
 	touch $STAGE
@@ -729,9 +731,10 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 STAGE=$CFG_STAGE_DIR/068-neutron-ovs-br
 [ -f $STAGE ] || {
 	sudo ovs-vsctl add-br br-provider
+	sudo ovs-vsctl set bridge br-provider protocols=OpenFlow13,OpenFlow15
 	sudo ovs-vsctl add-port br-provider eth1
 	sudo ovs-vsctl br-set-external-id br-provider bridge-id br-provider
-	sudo ovs-vsctl set open . external-ids:ovn-bridge-mappings=provider1:br-provider
+	sudo ovs-vsctl set open . external-ids:ovn-bridge-mappings=provider:br-provider
 	touch $STAGE
 }
 
