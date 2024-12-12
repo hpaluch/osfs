@@ -695,7 +695,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	# https://docs.openstack.org/neutron/latest/install/ovn/manual_install.html
 	f=/etc/neutron/plugins/ml2/ml2_conf.ini
-	sudo crudini --set $f ml2 type_drivers geneve,vxlan
+	sudo crudini --set $f ml2 type_drivers flat,geneve,vxlan
 	sudo crudini --set $f ml2 tenant_network_types geneve
 	sudo crudini --set $f ml2 mechanism_drivers ovn
 	sudo crudini --set $f ml2 extension_drivers port_security
@@ -829,7 +829,7 @@ STAGE=$CFG_STAGE_DIR/082-self-service
 	( source $CFG_BASE/keystonerc_admin
 	# https://docs.openstack.org/neutron/2024.1/admin/deploy-ovs-selfservice.html
 	openstack network set --external provider1
-	openstack network create selfservice1
+	openstack network create --provider-type geneve selfservice1
 	openstack subnet create --subnet-range 10.10.10.0/24 \
 	  --network selfservice1 --dns-nameserver 192.168.124.1 selfservice1-v4
 	openstack router create router1
