@@ -640,6 +640,9 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 	sudo crudini --set $f neutron service_metadata_proxy true
 	sudo crudini --set $f neutron metadata_proxy_shared_secret $METADATA_SECRET
 
+	# requires connection to OVS
+	sudo crudini --set $f os_vif_ovs ovsdb_connection = tcp:$HOST_IP:6640
+
 	#sudo diff $f{.orig,}
 	touch $STAGE
 }
@@ -743,7 +746,8 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$HOST_IP:6642
 	sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
 	sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$HOST_IP
-
+	# required by Nova
+	sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6640:0.0.0.0
 	touch $STAGE
 }
 
