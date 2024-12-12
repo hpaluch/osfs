@@ -1,7 +1,7 @@
 #!/bin/bash
 # setup_openstack_ovn_full.sh - attempt to setup single-node OpenStack on Ubuntu 24.04 LTS
 # USE ON YOUR OWN RISK!
-# Utilizing OVS with self-service nteworks:
+# Utilizing OVN with self-service nteworks:
 # - https://docs.openstack.org/neutron/2024.1/install/ovn/manual_install.html
 
 set -euo pipefail
@@ -707,18 +707,18 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f ovn ovn_nb_connection tcp:$HOST_IP:6641
 	sudo crudini --set $f ovn ovn_sb_connection tcp:$HOST_IP:6642
 	sudo crudini --set $f ovn ovn_l3_scheduler OVN_L3_SCHEDULER
+	# Metadata
+	sudo crudini --set $f ovn ovn_metadata_enabled True
+	
+	sudo crudini --set $f ovn dns_servers 192.168.123.1
 
 	sudo ovs-vsctl set open . external-ids:ovn-cms-options=enable-chassis-as-gw
 
 	# Compute node
-	ovs-vsctl set open . external-ids:ovn-remote=tcp:$HOST_IP:6642
-	ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
-	ovs-vsctl set open . external-ids:ovn-encap-ip=$HOST_IP
+	sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$HOST_IP:6642
+	sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve,vxlan
+	sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$HOST_IP
 
-	# Neutron Metadata Agent
-	#f=/etc/neutron/metadata_agent.ini
-	#sudo crudini --set $f DEFAULT nova_metadata_host "$HOST_IP"
-	#sudo crudini --set $f DEFAULT metadata_proxy_shared_secret $METADATA_SECRET
 	touch $STAGE
 }
 
@@ -726,6 +726,8 @@ STAGE=$CFG_STAGE_DIR/068-neutron-ovs-br
 [ -f $STAGE ] || {
 	sudo ovs-vsctl add-br br-provider
 	sudo ovs-vsctl add-port br-provider eth1
+	sudo ovs-vsctl br-set-external-id br-provider bridge-id br-provider
+	sudo ovs-vsctl set open . external-ids:ovn-bridge-mappings=provider1:br-provider
 	touch $STAGE
 }
 
