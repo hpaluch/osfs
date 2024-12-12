@@ -2,22 +2,30 @@
 
 > Project summary: setup OpenStack with single (easy to understand) bash script.
 
-Here are 3 variants how to setup single-node OpenStack
+Here are several variants how to setup single-node OpenStack
 under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
 
 # Status
 
-> WARNING! OpenStack Zed suddenly declared LinuxBridge as "experimental" (actually meaning "unsupported").
-> See https://docs.openstack.org/neutron/zed/admin/config-experimental-framework.html So far, it works.
+> WARNING! OpenStack Zed suddenly declared LinuxBridge as "experimental"
+> (actually meaning "unsupported").  See
+> https://docs.openstack.org/neutron/zed/admin/config-experimental-framework.html
+> and https://opendev.org/openstack/kolla-ansible/commit/8ef21123aea6371f23a7e86f6461a91c17bd84fd
+> So far, it works.
+>
+> What is irony that in the past RackSpace run away from OVS back to
+> LinuxBridge because OVS was to unstable for regular use:
+> https://www.youtube.com/watch?v=_OdPP_4PYD4
 
-> WARNING! No Horizon (Web UI) yet. It requires self-service network support which is not
-> supported here yet (due complexity). I plan to add such variant later...
+> WARNING! No Horizon (Web UI) yet. 
+> I plan to add such variant later...
 
-There are now these variants (all support "provider" network only, no self-service):
+Setup variants with "provider" (public) network only:
 
-1. DEPRECATED: single interface with LinuxBridge - requires lot of trickery to make it work.
-   You can find this version under [linuxbridge/](linuxbridge/) - tested under Ubuntu 22 LTS. Issues:
-   it requires firewall and Nova patches and causes assigned IP addresses mismatches
+1. DEPRECATED: single interface with LinuxBridge - requires lot of trickery to
+   make it work.  You can find this version under [linuxbridge/](linuxbridge/) -
+   tested under Ubuntu 22 LTS. Issues: it requires firewall and Nova patches and
+   causes assigned IP addresses mismatches
 
 2. DEPRECATED yet usable: 2 network interfaces (Management and Provider) with LinuxBridge
    under [linuxbridge-2ifaces/](linuxbridge-2ifaces/). This version includes embedded DHCP server
@@ -32,6 +40,22 @@ There are now these variants (all support "provider" network only, no self-servi
    Since OpenStack Zed, OVS bridge is only supported bridge in OpenStack deployments (where
    LinuxBridge is "deprecated" and "macvtap" abandoned)
 
+Setup variants with both "provider" (public) and "self-service" (private tenant) networks (typical
+OpenStack setup):
+
+4. RECOMMENDED: 3 network interfaces (Management, Provider, overlay) with Open
+   vSwitch (OVS) under [ovs-full/](ovs-full/) with self-service network. This
+   version includes embedded DHCP server and metadata agent (metadata not tested
+   though). Tested under Ubuntu 24.04.1 LTS.  This is most common setup where each
+   tenant has its "self-service" network and uses floating IP address to make VMs
+   reachable from outside.
+
+
+OVN Notes: I have no OVS+OVN variant (currently pushed by DevStack) because
+- official docs mention TripleO that was killed (and crippled repositories) in Feb 2023:
+  https://lists.openstack.org/pipermail/openstack-discuss/2023-February/032083.html
+- official docs admit that OVN documentation is incomplete on
+  https://docs.openstack.org/neutron/latest/install/ovn/manual_install.html
 
 > Please ignore `macvtap` version (now under `macvtap-fail/` folder). It seems
 > that `macvtap` agent always use VLANs, which is no way in my trivial environment with simple
