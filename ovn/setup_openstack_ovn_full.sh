@@ -3,6 +3,7 @@
 # USE ON YOUR OWN RISK!
 # Utilizing OVN with self-service nteworks:
 # - https://docs.openstack.org/neutron/2024.1/install/ovn/manual_install.html
+# - https://docs.openstack.org/neutron/2024.1/admin/ovn/refarch/refarch.html
 
 set -euo pipefail
 

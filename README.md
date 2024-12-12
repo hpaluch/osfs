@@ -14,7 +14,7 @@ under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
 > So far, it works.
 >
 > What is irony that in the past RackSpace run away from OVS back to
-> LinuxBridge because OVS was to unstable for regular use:
+> LinuxBridge because OVS was too unstable for regular use:
 > https://www.youtube.com/watch?v=_OdPP_4PYD4
 
 > WARNING! No Horizon (Web UI) yet. 
@@ -50,11 +50,10 @@ OpenStack setup):
    tenant has its "self-service" network and uses floating IP address to make VMs
    reachable from outside.
 
-OVN Notes: I have no OVS+OVN variant (currently pushed by DevStack) because
-- official docs mention TripleO that was killed (and crippled repositories) in Feb 2023:
-  https://lists.openstack.org/pipermail/openstack-discuss/2023-February/032083.html
-- official docs admit that OVN documentation is incomplete on
-  https://docs.openstack.org/neutron/latest/install/ovn/manual_install.html
+5. FUTURE: OVN with 2 network interfaces (Management, Provider). This is official
+   configuration pushed by OpenStack as future. Scripts are under [ovn/](ovn/).
+   WARNING! OVN is poorly documented - I had to resort to copy some items from
+   DevStack...
 
 > Please ignore `macvtap` version (now under `macvtap-fail/` folder). It seems
 > that `macvtap` agent always use VLANs, which is no way in my trivial environment with simple

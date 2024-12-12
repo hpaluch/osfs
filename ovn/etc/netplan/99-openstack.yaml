@@ -1,6 +1,6 @@
 # /etc/netplan/99-openstack.yaml - for 2 interfaces setup
 # eth0: management, static IP 192.168.122.87/24 + DNS same as GW
-# eth1: provider network, ovs, no IP address by default (reserved 192.168.124.0/24 with gw/dns .1)
+# eth1: provider network, OVN, no IP address by default (reserved 192.168.124.0/24 with gw/dns .1)
 ---
 network:
   version: 2
