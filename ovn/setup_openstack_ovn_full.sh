@@ -655,6 +655,14 @@ STAGE=$CFG_STAGE_DIR/068a-neutron-ovn-north
 	sudo systemctl start ovn-northd
 	touch $STAGE
 }
+
+# verify that OVS is available
+sudo ovs-vsctl show
+# verify that OVN northbound DB is available
+sudo ovn-nbctl show
+# verify that OVN southbound DB is available
+sudo ovn-sbctl show
+
 # https://docs.openstack.org/neutron/latest/install/ovn/manual_install.html
 STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 [ -f $STAGE ] || {
