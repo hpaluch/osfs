@@ -719,10 +719,15 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo crudini --set $f ovn ovn_nb_connection tcp:$HOST_IP:6641
 	sudo crudini --set $f ovn ovn_sb_connection tcp:$HOST_IP:6642
 	sudo crudini --set $f ovn ovn_l3_scheduler leastloaded
-	# Metadata
-	sudo crudini --set $f ovn ovn_metadata_enabled True
-	
 	sudo crudini --set $f ovn dns_servers 192.168.123.1
+	# Metadata Agent - ML2 conf
+	sudo crudini --set $f ovn ovn_metadata_enabled True
+
+	# Metadata agent - own ini -  undocumented - from devstack
+	f=/etc/neutron/neutron_ovn_metadata_agent.ini
+	sudo crudini --set $f DEFAULT nova_metadata_host $HOST_IP
+	#sudo crudini --set $f ovs ovsdb_connection tcp:127.0.0.1:6640
+	sudo crudini --set $f ovn ovn_sb_connection tcp:$HOST_IP:6642
 
 	sudo ovs-vsctl set open . external-ids:ovn-cms-options=enable-chassis-as-gw
 
@@ -840,7 +845,7 @@ STAGE=$CFG_STAGE_DIR/082-self-service
 	( source $CFG_BASE/keystonerc_admin
 	# https://docs.openstack.org/neutron/2024.1/admin/deploy-ovs-selfservice.html
 	openstack network set --external provider1
-	openstack network create --provider-type geneve selfservice1
+	openstack network create --provider-network-type geneve selfservice1
 	openstack subnet create --subnet-range 10.10.10.0/24 \
 	  --network selfservice1 --dns-nameserver 192.168.124.1 selfservice1-v4
 	openstack router create router1
