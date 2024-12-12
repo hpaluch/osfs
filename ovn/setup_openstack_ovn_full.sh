@@ -13,7 +13,8 @@ ENABLE_EATMYDATA=''
 
 # feel free to add your favorite packages to this variable:
 EXTRA_PKGS='sysstat strace'
-HOST=`hostname -f`
+HOST_SHORT=`hostname`
+HOST=`hostname -f` # actually FQDN
 HOST_IP=`hostname -i`
 OVERLAY_INTERFACE_IP_ADDRESS=$HOST_IP
 METADATA_SECRET=Secret123
@@ -732,7 +733,12 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo ovs-vsctl set open . external-ids:ovn-cms-options=enable-chassis-as-gw
 
 	# Compute node
-	sudo ovs-vsctl set open . external-ids:hostname=$HOST
+	# Note: external-ids:hostname must *exactly* match `hostname` output, otherwise
+	# creating VM will throw error:
+	# - Refusing to bind port ID due to no OVN chassis for host HOST ...
+	# see https://bugs.launchpad.net/openstack-ansible/+bug/1805626
+	# Check with: ovs-vsctl get open_vswitch . external_ids
+	sudo ovs-vsctl set open . external-ids:hostname=$HOST_SHORT
 	sudo ovs-vsctl set open . external-ids:ovn-bridge=br-int
 	sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$HOST_IP:6642
 	sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
