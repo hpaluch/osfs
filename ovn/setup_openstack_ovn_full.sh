@@ -646,6 +646,10 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 # https://docs.openstack.org/neutron/latest/install/ovn/manual_install.html
 STAGE=$CFG_STAGE_DIR/068a-neutron-ovn-north
 [ -f $STAGE ] || {
+	# FIXME: workaround for: ovn-nbctl: unix:/var/run/ovn/ovnnb_db.sock: database connection failed
+	sudo systemctl restart ovn-ovsdb-server-sb.service
+	sudo systemctl restart ovn-ovsdb-server-nb.service
+	sleep 3
 	sudo ovn-nbctl set-connection ptcp:6641:$HOST_IP -- set connection . inactivity_probe=60000
 	sudo ovn-sbctl set-connection ptcp:6642:$HOST_IP -- set connection . inactivity_probe=60000
 	sudo systemctl start ovn-northd
@@ -706,7 +710,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 
 	sudo crudini --set $f ovn ovn_nb_connection tcp:$HOST_IP:6641
 	sudo crudini --set $f ovn ovn_sb_connection tcp:$HOST_IP:6642
-	sudo crudini --set $f ovn ovn_l3_scheduler OVN_L3_SCHEDULER
+	sudo crudini --set $f ovn ovn_l3_scheduler chance
 	# Metadata
 	sudo crudini --set $f ovn ovn_metadata_enabled True
 	
