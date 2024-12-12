@@ -641,7 +641,11 @@ STAGE=$CFG_STAGE_DIR/066-nova-cfg
 	sudo crudini --set $f neutron metadata_proxy_shared_secret $METADATA_SECRET
 
 	# requires connection to OVS
-	sudo crudini --set $f os_vif_ovs ovsdb_connection = tcp:$HOST_IP:6640
+	sudo crudini --set $f os_vif_ovs ovsdb_connection tcp:127.0.0.1:6640
+	sudo crudini --set $f os_vif_ovs isolate_vif False
+	# from devstack
+	f=/etc/nova/nova-cpu.conf
+	sudo crudini --set $f os_vif_ovs ovsdb_connection tcp:127.0.0.1:6640
 
 	#sudo diff $f{.orig,}
 	touch $STAGE
@@ -730,8 +734,7 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	# Metadata agent - own ini -  undocumented - from devstack
 	f=/etc/neutron/neutron_ovn_metadata_agent.ini
 	sudo crudini --set $f DEFAULT nova_metadata_host $HOST_IP
-	#sudo crudini --set $f ovs ovsdb_connection tcp:127.0.0.1:6640
-	sudo crudini --set $f ovn ovn_sb_connection tcp:$HOST_IP:6642
+	sudo crudini --set $f ovs ovsdb_connection tcp:127.0.0.1:6640
 
 	sudo ovs-vsctl set open . external-ids:ovn-cms-options=enable-chassis-as-gw
 
@@ -746,8 +749,8 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	sudo ovs-vsctl set open . external-ids:ovn-remote=tcp:$HOST_IP:6642
 	sudo ovs-vsctl set open . external-ids:ovn-encap-type=geneve
 	sudo ovs-vsctl set open . external-ids:ovn-encap-ip=$HOST_IP
-	# required by Nova
-	sudo ovs-appctl -t ovsdb-server ovsdb-server/add-remote ptcp:6640:0.0.0.0
+	# required by Nova - uses loopback because it is not allowed to listen on non-management interfaces(!)
+	sudo ovs-vsctl set-manager ptcp:6640:127.0.0.1
 	touch $STAGE
 }
 
