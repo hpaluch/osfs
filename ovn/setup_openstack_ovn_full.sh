@@ -833,11 +833,12 @@ STAGE=$CFG_STAGE_DIR/070-neutron-ovn
 }
 
 # create provider network without VLAN - see: https://docs.openstack.org/neutron/latest/admin/deploy-lb-provider.html#create-initial-networks
+# NOTE: Horizon requires --enable-port-security to Launch instance without error
 STAGE=$CFG_STAGE_DIR/080-create-network
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
 	  openstack network create --share --provider-physical-network provider \
-		  --disable-port-security \
+		  --enable-port-security \
 		  --provider-network-type flat provider1
 	)
 	touch $STAGE
@@ -933,8 +934,7 @@ STAGE=$CFG_STAGE_DIR/100security-rules
 STAGE=$CFG_STAGE_DIR/101flavors
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
-	# from: https://docs.openstack.org/install-guide/launch-instance.html
-	openstack flavor create --id 0 --vcpus 1 --ram 64 --disk 1 m1.nano
+	# Removed "nano" flavor (64MB): cirros crashes due too little memory!
 	# from: https://opendev.org/openstack/devstack/src/branch/master/lib/nova
 	openstack flavor create --id 1 --ram 512 --disk 1 --vcpus 1 m1.tiny
 	openstack flavor create --id 2 --ram 2048 --disk 20 --vcpus 1 m1.small
