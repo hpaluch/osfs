@@ -36,6 +36,8 @@ Setup variants with "provider" (public) network only:
    Since OpenStack Zed, OVS bridge is only supported bridge in OpenStack deployments (where
    LinuxBridge is "deprecated" and "macvtap" abandoned)
 
+   Now it includes Horizon Web UI
+
 Setup variants with both "provider" (public) and "self-service" (private tenant) networks (typical
 OpenStack setup) - all include Horizon Web UI:
 

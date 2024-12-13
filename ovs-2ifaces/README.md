@@ -1,6 +1,7 @@
 # It Works! Configure OpenStack with OVS - 2 interfaces
 
 Here is minimal supported configuration of OpenStack using Open vSwitch (OVS) and 2 network interfaces.
+It has provider only network (no "self-service" private VM network). It includes Horizon Web UI.
 
 - Tested OS: `Ubuntu 24.04.1 LTS (Noble Numbat)`
 - OpenStack version: output of `dpkg -l neutron-common` is: `2:24.0.0-0ubuntu1`. It should
