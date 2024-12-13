@@ -1,6 +1,7 @@
 # It Works! Configure OpenStack with LinuxBridge - 2 interfaces
 
 Here is minimal but generally supported configuration of OpenStack using LinuxBridge and 2 network interfaces.
+It includes Horizon Web UI.
 
 > WARNING! OpenStack Zed suddenly declared LinuxBridge as "experimental" (actually meaning "unsupported").
 > See https://docs.openstack.org/neutron/zed/admin/config-experimental-framework.html So far, it works.

@@ -17,6 +17,8 @@ HOST=`hostname -f`
 HOST_IP=`hostname -i`
 METADATA_SECRET=Secret123
 
+# lines below should not be modified
+OSFS_KEYSTONE_URL=http://$HOST:5000/v3
 # change working directory to this script location
 cd $(dirname $0)
 # get full absolute path of this directory (we will later use it to apply Nova Bridge name patch)
@@ -519,7 +521,7 @@ STAGE=$CFG_STAGE_DIR/054rabbit-account
 }
 
 # Partial Setup for Neutron and Nova (there is circular dependency so we have
-# to setup them in smal increments)...
+# to setup them in small increments)...
 STAGE=$CFG_STAGE_DIR/060neutron-db
 [ -f $STAGE ] || {
 	setup_mysql_db neutron neutron
@@ -802,11 +804,12 @@ STAGE=$CFG_STAGE_DIR/070b-neutron-agents-enable
 }
 
 # create provider network without VLAN - see: https://docs.openstack.org/neutron/latest/admin/deploy-lb-provider.html#create-initial-networks
+# NOTE: Horizon requires --enable-port-security to Launch instance without error
 STAGE=$CFG_STAGE_DIR/080-create-network
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
 	  openstack network create --share --provider-physical-network provider \
-		  --disable-port-security \
+		  --enable-port-security \
 		  --provider-network-type flat provider1
 	)
 	touch $STAGE
@@ -885,8 +888,7 @@ STAGE=$CFG_STAGE_DIR/100security-rules
 STAGE=$CFG_STAGE_DIR/101flavors
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
-	# from: https://docs.openstack.org/install-guide/launch-instance.html
-	openstack flavor create --id 0 --vcpus 1 --ram 64 --disk 1 m1.nano
+	# Removed "nano" flavor (64MB): cirros crashes due too little memory!
 	# from: https://opendev.org/openstack/devstack/src/branch/master/lib/nova
 	openstack flavor create --id 1 --ram 512 --disk 1 --vcpus 1 m1.tiny
 	openstack flavor create --id 2 --ram 2048 --disk 20 --vcpus 1 m1.small
@@ -900,16 +902,54 @@ STAGE=$CFG_STAGE_DIR/101flavors
 	touch $STAGE
 }
 
+STAGE=$CFG_STAGE_DIR/110-horizon
+[ -f $STAGE ] || {
+	sudo apt-get install -y openstack-dashboard
+
+	f=/etc/openstack-dashboard/local_settings.py
+	sudo sed -i.bak -e 's@^\(OPENSTACK_KEYSTONE_URL\).*@\1="'"$OSFS_KEYSTONE_URL"'"@;s@127\.0\.0\.1@'"$HOST"'@' $f
+
+# this appending required when self-service networks are absent
+
+sudo tee -a $f <<'EOF'
+
+# disable self-service network
+# See https://docs.openstack.org/horizon/2024.1/install/install-ubuntu.html
+# TODO: Will it be merged with defaults in /usr/lib/python3/dist-packages$ less openstack_dashboard/defaults.py ?
+OPENSTACK_NEUTRON_NETWORK = {
+    'enable_router': False,
+    'enable_quotas': False,
+    'enable_ipv6': False,
+    'enable_distributed_router': False,
+    'enable_ha_router': False,
+    'enable_fip_topology_check': False,
+}
+EOF
+
+	# required by COMPRESS_OFFLINE=True
+	#already done: sudo /usr/share/openstack-dashboard/manage.py collectstatic
+	sudo /usr/share/openstack-dashboard/manage.py compress
+
+	sudo /usr/sbin/apache2ctl -t
+	sudo systemctl restart apache2
+	touch $STAGE
+}
+
 set +x
 echo "Ensure that on list below the 'State' column has value 'Up'"
 ( source $CFG_BASE/keystonerc_admin
 	openstack hypervisor list
 )
 
+p=`cat $CFG_SEC_DIR/svc_keystone_pwd.txt`
 cat <<EOF
 OK: SETUP FINISHED!
 
-Now you can create your fist VM using commands like:
+Now you can create your fist VM:
+a) using Web UI at: http://$HOST/horizon/
+   Login/password: admin/$p
+
+b) or using CLI:
 
 # do not taint main bash environment:
 bash
