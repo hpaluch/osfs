@@ -806,11 +806,12 @@ STAGE=$CFG_STAGE_DIR/070b-neutron-agents-enable
 }
 
 # create provider network without VLAN - see: https://docs.openstack.org/neutron/latest/admin/deploy-lb-provider.html#create-initial-networks
+# NOTE: Horizon requires --enable-port-security to Launch instance without error
 STAGE=$CFG_STAGE_DIR/080-create-network
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
 	  openstack network create --share --provider-physical-network provider \
-		  --disable-port-security \
+		  --enable-port-security \
 		  --provider-network-type flat provider1
 	)
 	touch $STAGE
