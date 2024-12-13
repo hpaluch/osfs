@@ -5,6 +5,8 @@ Project summary: setup OpenStack with single and easy to understand bash script.
 Here are several variants how to setup single-node OpenStack
 under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
 
+![Horizon on ML2/OVN](assets/Horizon-OVN.png)
+
 # Status
 
 > [!WARNING]
@@ -17,10 +19,6 @@ under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
 > What is irony that in the past RackSpace run away from OVS back to
 > LinuxBridge because OVS was too unstable for regular use:
 > https://www.youtube.com/watch?v=_OdPP_4PYD4
-
-> [!WARNING]
-> No Horizon (Web UI) yet. 
-> I plan to add such variant later...
 
 Setup variants with "provider" (public) network only:
 
@@ -40,8 +38,10 @@ Setup variants with "provider" (public) network only:
    Since OpenStack Zed, OVS bridge is only supported bridge in OpenStack deployments (where
    LinuxBridge is "deprecated" and "macvtap" abandoned)
 
+   Now it includes Horizon Web UI
+
 Setup variants with both "provider" (public) and "self-service" (private tenant) networks (typical
-OpenStack setup):
+OpenStack setup) - all examples below include Horizon Web UI:
 
 4. RECOMMENDED: ML2/OVS: 2 network interfaces (Management, Provider) with Open
    vSwitch (OVS) under [ovs-full/](ovs-full/) with self-service network. This

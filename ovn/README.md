@@ -2,7 +2,7 @@
 
 Here is minimal supported configuration of OpenStack using ML2/OVN and 2
 network interfaces. It supports both Provider network and Self-service network
-(using `geneve` overlays)
+(using `geneve` overlays). It includes Web UI Horizon.
 
 > [!NOTE]
 > This network setup (ML2/OVN) is presented as official future for OpenStack -
