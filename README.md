@@ -18,10 +18,6 @@ under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
 > LinuxBridge because OVS was too unstable for regular use:
 > https://www.youtube.com/watch?v=_OdPP_4PYD4
 
-> [!WARNING]
-> No Horizon (Web UI) yet. 
-> I plan to add such variant later...
-
 Setup variants with "provider" (public) network only:
 
 1. DEPRECATED: single interface with LinuxBridge - requires lot of trickery to
@@ -53,6 +49,8 @@ OpenStack setup):
 5. RECOMMENDED + FUTURE: ML2/OVN with 2 network interfaces (Management, Provider).
    OVN is pushed by OpenStack as future. Scripts are under [ovn/](ovn/). Under hood
    OVS is still there as L2 layer, but "L3 Agents" were replaced with OVN layer.
+
+   It includes Horizon Web UI.
 
 > [!NOTE]
 > Please ignore `macvtap` version (now under `macvtap-fail/` folder). It seems
