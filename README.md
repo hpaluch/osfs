@@ -5,6 +5,8 @@ Project summary: setup OpenStack with single and easy to understand bash script.
 Here are several variants how to setup single-node OpenStack
 under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
 
+![Horizon on ML2/OVN](assets/Horizon-OVN.png)
+
 # Status
 
 > [!WARNING]
@@ -39,7 +41,7 @@ Setup variants with "provider" (public) network only:
    Now it includes Horizon Web UI
 
 Setup variants with both "provider" (public) and "self-service" (private tenant) networks (typical
-OpenStack setup) - all include Horizon Web UI:
+OpenStack setup) - all examples below include Horizon Web UI:
 
 4. RECOMMENDED: ML2/OVS: 2 network interfaces (Management, Provider) with Open
    vSwitch (OVS) under [ovs-full/](ovs-full/) with self-service network. This
