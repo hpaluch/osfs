@@ -37,7 +37,7 @@ Setup variants with "provider" (public) network only:
    LinuxBridge is "deprecated" and "macvtap" abandoned)
 
 Setup variants with both "provider" (public) and "self-service" (private tenant) networks (typical
-OpenStack setup):
+OpenStack setup) - all include Horizon Web UI:
 
 4. RECOMMENDED: ML2/OVS: 2 network interfaces (Management, Provider) with Open
    vSwitch (OVS) under [ovs-full/](ovs-full/) with self-service network. This
@@ -49,8 +49,6 @@ OpenStack setup):
 5. RECOMMENDED + FUTURE: ML2/OVN with 2 network interfaces (Management, Provider).
    OVN is pushed by OpenStack as future. Scripts are under [ovn/](ovn/). Under hood
    OVS is still there as L2 layer, but "L3 Agents" were replaced with OVN layer.
-
-   It includes Horizon Web UI.
 
 > [!NOTE]
 > Please ignore `macvtap` version (now under `macvtap-fail/` folder). It seems
