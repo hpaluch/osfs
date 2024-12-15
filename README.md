@@ -20,16 +20,17 @@ under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
 > LinuxBridge because OVS was too unstable for regular use:
 > https://www.youtube.com/watch?v=_OdPP_4PYD4
 
+
 Setup variants with "provider" (public) network only. All examples below
 (but 1st one) include also Web UI called Horizon.
 
 1. DEPRECATED: single interface with LinuxBridge - requires lot of trickery to
-   make it work.  You can find this version under [linuxbridge/](linuxbridge/) -
+   make it work. You can find this version under [linuxbridge/](linuxbridge/) -
    tested under Ubuntu 22 LTS. Issues: it requires firewall and Nova patches and
    causes assigned IP addresses mismatches. This example does NOT include Web UI
    Horizon. Only CLI is available.
 
-2. DEPRECATED but I like it: LinuxBridge: (by OpenStack) yet usable: 2 network interfaces
+2. UNSUPPORTED (by OpenStack maintainers) but I like it!: LinuxBridge: (by OpenStack) yet usable: 2 network interfaces
    (Management and Provider) with
    LinuxBridge under [linuxbridge-2ifaces/](linuxbridge-2ifaces/). This version
    includes embedded DHCP server and metadata agent (metadata not tested though).
@@ -46,6 +47,16 @@ Setup variants with "provider" (public) network only. All examples below
 Setup variants with both "provider" (public) and "self-service" (private tenant) networks (typical
 OpenStack setup) - all examples below include Horizon Web UI:
 
+2. UNSUPPORTED (by OpenStack maintainers) but I like it!: LinuxBridge: (by OpenStack) yet usable: 2 network interfaces
+   (Management and Provider/self-service) with
+   LinuxBridge under [lbr-full/](lbr-full/). This version
+   includes embedded DHCP server metadata agent (metadata not tested though)
+   and L3 Agent (required for self-service networks).
+   Tested under Ubuntu 24.04.1 LTS.
+
+   It is my preferred solution: LinuxBridge (most straightforward way) with
+   both Provider and Self-Service networks.
+
 4. RECOMMENDED: ML2/OVS: 2 network interfaces (Management, Provider) with Open
    vSwitch (OVS) under [ovs-full/](ovs-full/) with self-service network. This
    version includes embedded DHCP server and metadata agent (metadata not tested
@@ -56,6 +67,10 @@ OpenStack setup) - all examples below include Horizon Web UI:
 5. RECOMMENDED + FUTURE: ML2/OVN with 2 network interfaces (Management, Provider).
    OVN is pushed by OpenStack as future. Scripts are under [ovn/](ovn/). Under hood
    OVS is still there as L2 layer, but "L3 Agents" were replaced with OVN layer.
+
+Disclaimer: I did not yet tested Overlay network - it requires at least 2 compute
+nodes. It emulates flat private network (called self-service) for VMs even when
+these VMs runs on different Compute Hosts - it is using VXLAN tunnels for this.
 
 > [!NOTE]
 > Please ignore `macvtap` version (now under `macvtap-fail/` folder). It seems

@@ -1,10 +1,10 @@
 #!/bin/bash
 # setup_openstack_lbr_full.sh - attempt to setup single-node OpenStack on Ubuntu 24.04 LTS
 # USE ON YOUR OWN RISK!
-# Using Linux bridge with both Provider and Self-Service Network
-# Provider Network:
+# OpenStack Setup script: Using LinuxBridge to manage both Provider and Self-Service Network
+# Provider Network guide:
 # - https://docs.openstack.org/neutron/2024.1/admin/deploy-lb-provider.html
-# Self-Service Network:
+# Self-Service Network guide:
 # - https://docs.openstack.org/neutron/2024.1/admin/deploy-lb-selfservice.html
 
 set -euo pipefail
@@ -556,11 +556,12 @@ STAGE=$CFG_STAGE_DIR/064neutron-pkg
 [ -f $STAGE ] || {
 	sudo $APT_CMD install -y neutron-server neutron-plugin-ml2 \
        		python3-neutronclient neutron-linuxbridge-agent \
-		neutron-metadata-agent neutron-dhcp-agent
+		neutron-metadata-agent neutron-dhcp-agent neutron-l3-agent
 	# Disable and stop all services until they are properly configured to avoid eating CPU, etc...
 	sudo systemctl disable --now neutron-linuxbridge-cleanup.service \
 		neutron-linuxbridge-agent.service neutron-server.service \
-		neutron-dhcp-agent.service neutron-metadata-agent.service
+		neutron-dhcp-agent.service neutron-metadata-agent.service \
+		neutron-l3-agent.service
 	# remove clutter of errors because services are not configured yet
 	sudo find /var/log/neutron/ -name '*.log' -a -delete
 	touch $STAGE
@@ -730,6 +731,12 @@ STAGE=$CFG_STAGE_DIR/068-neutron-cfg
 	f=/etc/neutron/metadata_agent.ini
 	sudo crudini --set $f DEFAULT nova_metadata_host "$HOST_IP"
 	sudo crudini --set $f DEFAULT metadata_proxy_shared_secret $METADATA_SECRET
+
+	# Neutron L3 agent (for self-service network)
+	# https://docs.openstack.org/neutron/2024.1/admin/deploy-lb-selfservice.html
+	f=/etc/neutron/l3_agent.ini
+	sudo crudini --set $f DEFAULT interface_driver linuxbridge
+
 	touch $STAGE
 }
 
@@ -802,7 +809,8 @@ STAGE=$CFG_STAGE_DIR/070b-neutron-agents-enable
 [ -f $STAGE ] || {
 	# re-enable
 	sudo systemctl enable --now \
-		neutron-dhcp-agent.service neutron-metadata-agent.service
+		neutron-dhcp-agent.service neutron-metadata-agent.service \
+		neutron-l3-agent.service
 	touch $STAGE
 }
 
@@ -835,9 +843,11 @@ STAGE=$CFG_STAGE_DIR/081-create-subnet
 STAGE=$CFG_STAGE_DIR/082-self-service
 [ -f $STAGE ] || {
 	( source $CFG_BASE/keystonerc_admin
-	# https://docs.openstack.org/neutron/2024.1/admin/deploy-ovs-selfservice.html
+	# https://docs.openstack.org/neutron/2024.1/admin/deploy-lb-selfservice.html
 	openstack network set --external provider1
-	openstack network create selfservice1
+	# Overlay on VXLAN has 50 byte overhead, so MTU is 1500 - 50 = 1450
+	# See also: https://docs.openstack.org/neutron/2024.1/admin/deploy-lb-selfservice.html
+	openstack network create selfservice1 --mtu 1450
 	openstack subnet create --subnet-range 10.10.10.0/24 \
 	  --network selfservice1 --dns-nameserver 192.168.124.1 selfservice1-v4
 	openstack router create router1
