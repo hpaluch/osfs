@@ -2,10 +2,10 @@
 
 Project summary: setup OpenStack with single and easy to understand bash script.
 
+![Horizon on ML2/OVN](assets/Horizon-OVN.png)
+
 Here are several variants how to setup single-node OpenStack
 under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
-
-![Horizon on ML2/OVN](assets/Horizon-OVN.png)
 
 # Status
 
@@ -20,8 +20,22 @@ under Ubuntu LTS 24.04 (but 1st variant tested under 22.04 only).
 > LinuxBridge because OVS was too unstable for regular use:
 > https://www.youtube.com/watch?v=_OdPP_4PYD4
 
+All variants (with exception of 1st) use following network setup:
 
-Setup variants with "provider" (public) network only. All examples below
+- `eth0` - "Management network", should provide static IP and Internet access for install. On this
+  network also listens Web UI called Horizon
+- `eth1` - "Provider network", here OpenStack manages IP addresses that can be used
+  to reach VMs from outside. This Network should have access to Internet, but *no DHCP server*
+  should be there (OpenStack will manage this network with its own DHCP server!)
+- there also exists private network for VMs communications called "self-service" network.
+  There is no special interface for it. If you have more than 1 Compute host this network
+  spans accross these Nodes using tunnel (in my examples VXLAN tunnel).
+
+You can find typical Netplan setup in [etc/netplan/99-openstack.yaml](etc/netplan/99-openstack.yaml).
+
+## Setup script variants
+
+Here are Setup variants with "provider" (public) network only. All examples below
 (but 1st one) include also Web UI called Horizon.
 
 1. DEPRECATED: single interface with LinuxBridge - requires lot of trickery to
@@ -30,7 +44,7 @@ Setup variants with "provider" (public) network only. All examples below
    causes assigned IP addresses mismatches. This example does NOT include Web UI
    Horizon. Only CLI is available.
 
-2. UNSUPPORTED (by OpenStack maintainers) but I like it!: LinuxBridge: (by OpenStack) yet usable: 2 network interfaces
+2. UNSUPPORTED (by OpenStack maintainers) but I like it!: LinuxBridge: 2 network interfaces
    (Management and Provider) with
    LinuxBridge under [linuxbridge-2ifaces/](linuxbridge-2ifaces/). This version
    includes embedded DHCP server and metadata agent (metadata not tested though).
@@ -47,7 +61,7 @@ Setup variants with "provider" (public) network only. All examples below
 Setup variants with both "provider" (public) and "self-service" (private tenant) networks (typical
 OpenStack setup) - all examples below include Horizon Web UI:
 
-2. UNSUPPORTED (by OpenStack maintainers) but I like it!: LinuxBridge: (by OpenStack) yet usable: 2 network interfaces
+4. UNSUPPORTED (by OpenStack maintainers) but I like it!: LinuxBridge: 2 network interfaces
    (Management and Provider/self-service) with
    LinuxBridge under [lbr-full/](lbr-full/). This version
    includes embedded DHCP server metadata agent (metadata not tested though)
@@ -57,14 +71,14 @@ OpenStack setup) - all examples below include Horizon Web UI:
    It is my preferred solution: LinuxBridge (most straightforward way) with
    both Provider and Self-Service networks.
 
-4. RECOMMENDED: ML2/OVS: 2 network interfaces (Management, Provider) with Open
+5. RECOMMENDED: ML2/OVS: 2 network interfaces (Management, Provider) with Open
    vSwitch (OVS) under [ovs-full/](ovs-full/) with self-service network. This
    version includes embedded DHCP server and metadata agent (metadata not tested
    though). Tested under Ubuntu 24.04.1 LTS.  This is most common setup where each
    tenant has its "self-service" network and uses floating IP address to make VMs
    reachable from outside.
 
-5. RECOMMENDED + FUTURE: ML2/OVN with 2 network interfaces (Management, Provider).
+6. RECOMMENDED + FUTURE: ML2/OVN with 2 network interfaces (Management, Provider).
    OVN is pushed by OpenStack as future. Scripts are under [ovn/](ovn/). Under hood
    OVS is still there as L2 layer, but "L3 Agents" were replaced with OVN layer.
 
